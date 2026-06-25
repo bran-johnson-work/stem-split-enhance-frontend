@@ -1,0 +1,203 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* =============================================================
+   KlearNote design tokens — Red + White, Suno-inspired
+   Light = marketing/default · Dark = app (near-black, glow)
+   ============================================================= */
+
+:root {
+  --radius: 0.75rem;
+
+  /* surfaces & text */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* brand */
+  --primary: #b4030e;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #b4030e;
+
+  --chart-1: #b4030e;
+  --chart-2: #f59e0b;
+  --chart-3: #3b82f6;
+  --chart-4: #22c55e;
+  --chart-5: #6366f1;
+
+  /* sidebar (app shell) */
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #b4030e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #b4030e;
+
+  /* KlearNote brand extras — aligned to logo red (#b4030e) */
+  --brand: #b4030e;
+  --brand-hover: #8c020b;
+  --brand-tint: #ffe5e7;
+  --gradient-from: #c40714;
+  --gradient-to: #8a020c;
+
+  /* 7 processing-pipeline states */
+  --state-queued: #71717a;
+  --state-analyzing: #3b82f6;
+  --state-separating: #6366f1;
+  --state-cleaning: #06b6d4;
+  --state-mastering: #f59e0b;
+  --state-completed: #22c55e;
+  --state-failed: #ef4444;
+}
+
+.dark {
+  --background: #0a0a0b;
+  --foreground: #fafafa;
+  --card: #161618;
+  --card-foreground: #fafafa;
+  --popover: #161618;
+  --popover-foreground: #fafafa;
+
+  --primary: #ff4655;
+  --primary-foreground: #ffffff;
+
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #1f1f23;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #27272a;
+  --input: #2a2a2e;
+  --ring: #ff4655;
+
+  --chart-1: #ff4655;
+  --chart-2: #f59e0b;
+  --chart-3: #60a5fa;
+  --chart-4: #4ade80;
+  --chart-5: #818cf8;
+
+  --sidebar: #0f0f11;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #ff4655;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f1f23;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #ff4655;
+
+  --brand: #ff4655;
+  --brand-hover: #ff6b76;
+  --brand-tint: #2a1416;
+  --gradient-from: #ff3b3b;
+  --gradient-to: #ff6b6b;
+
+  --state-queued: #a1a1aa;
+  --state-analyzing: #60a5fa;
+  --state-separating: #818cf8;
+  --state-cleaning: #22d3ee;
+  --state-mastering: #fbbf24;
+  --state-completed: #4ade80;
+  --state-failed: #f87171;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-tint: var(--brand-tint);
+
+  --color-queued: var(--state-queued);
+  --color-analyzing: var(--state-analyzing);
+  --color-separating: var(--state-separating);
+  --color-cleaning: var(--state-cleaning);
+  --color-mastering: var(--state-mastering);
+  --color-completed: var(--state-completed);
+  --color-failed: var(--state-failed);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Brand gradient helper used by hero / accents */
+@utility bg-brand-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--gradient-from) 0%,
+    var(--gradient-to) 100%
+  );
+}
