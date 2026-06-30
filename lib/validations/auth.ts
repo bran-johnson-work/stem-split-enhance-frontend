@@ -9,6 +9,7 @@ const password = z
 export const loginSchema = z.object({
   email: z.email("Enter a valid email"),
   password: z.string().min(1, "Password is required"),
+  remember: z.boolean(),
 });
 export type LoginValues = z.infer<typeof loginSchema>;
 
@@ -16,6 +17,9 @@ export const signupSchema = z.object({
   name: z.string().min(2, "Enter your name"),
   email: z.email("Enter a valid email"),
   password,
+  terms: z.boolean().refine((v) => v, {
+    message: "Please accept the terms to continue",
+  }),
 });
 export type SignupValues = z.infer<typeof signupSchema>;
 

@@ -7,7 +7,6 @@ import {
   Gauge,
   Layers,
   ShieldCheck,
-  Sparkles,
   Wand2,
 } from "lucide-react";
 import { BeforeAfter } from "@/components/marketing/before-after";
@@ -21,7 +20,6 @@ import { SectionHeading } from "@/components/marketing/section-heading";
 import { StatsBand } from "@/components/marketing/stats-band";
 import { StemPlayer } from "@/components/marketing/stem-player";
 import { Testimonials } from "@/components/marketing/testimonials";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 

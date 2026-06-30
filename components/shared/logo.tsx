@@ -6,10 +6,17 @@ export function Logo({
   className,
   href = "/",
   priority = false,
+  variant = "auto",
 }: {
   className?: string;
   href?: string;
   priority?: boolean;
+  /**
+   * Which ink to render. "auto" (default) follows the theme — red on light,
+   * white in dark mode. "white"/"red" force one ink regardless of theme,
+   * e.g. "white" when the logo sits on a dark photo or gradient.
+   */
+  variant?: "auto" | "red" | "white";
 }) {
   return (
     <Link
@@ -20,24 +27,28 @@ export function Logo({
       {/* Transparent horizontal KLEARNOTE.ai lockup (mark + wordmark).
           Logo-red ink on light surfaces, white ink in dark mode.
           Decorative — the link's aria-label carries the name. */}
-      <Image
-        src="/logo-horizontal-red.png"
-        alt=""
-        aria-hidden
-        width={1779}
-        height={278}
-        priority={priority}
-        className="h-8 w-auto dark:hidden"
-      />
-      <Image
-        src="/logo-horizontal-white.png"
-        alt=""
-        aria-hidden
-        width={1779}
-        height={278}
-        priority={priority}
-        className="hidden h-8 w-auto dark:block"
-      />
+      {variant !== "white" && (
+        <Image
+          src="/logo-horizontal-red.png"
+          alt=""
+          aria-hidden
+          width={1779}
+          height={278}
+          priority={priority}
+          className={cn("h-8 w-auto", variant === "auto" && "dark:hidden")}
+        />
+      )}
+      {variant !== "red" && (
+        <Image
+          src="/logo-horizontal-white.png"
+          alt=""
+          aria-hidden
+          width={1779}
+          height={278}
+          priority={priority}
+          className={cn("h-8 w-auto", variant === "auto" && "hidden dark:block")}
+        />
+      )}
     </Link>
   );
 }
