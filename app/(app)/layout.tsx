@@ -18,8 +18,10 @@ export default function AppLayout({
       <AppSidebar />
       <SidebarInset>
         <header className="bg-background/80 sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border/60 px-4 backdrop-blur-md">
-          <SidebarTrigger />
-          <Separator orientation="vertical" className="mr-1 h-5" />
+          {/* Mobile opens the drawer here; on desktop the collapse control
+              lives on the sidebar itself. */}
+          <SidebarTrigger className="md:hidden" />
+          <Separator orientation="vertical" className="mr-1 h-5 md:hidden" />
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
             <UserMenu />

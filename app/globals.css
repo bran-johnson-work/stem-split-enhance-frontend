@@ -201,3 +201,283 @@
     var(--gradient-to) 100%
   );
 }
+
+/* =============================================================
+   Marketing / landing-page motion + decorative backdrops
+   All animation is GPU-friendly (transform/opacity) and is
+   disabled wholesale under prefers-reduced-motion (bottom).
+   ============================================================= */
+
+/* Faint grid overlay for hero / CTA backdrops */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Soft animated brand-coloured radial glows */
+@utility bg-aurora {
+  background-image:
+    radial-gradient(
+      40% 55% at 18% 22%,
+      color-mix(in srgb, var(--brand) 35%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      42% 55% at 82% 26%,
+      color-mix(in srgb, var(--gradient-to) 32%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      55% 60% at 50% 92%,
+      color-mix(in srgb, var(--gradient-from) 26%, transparent) 0%,
+      transparent 72%
+    );
+}
+
+/* Hide the native scrollbar while keeping the element scrollable */
+@utility no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome / Safari */
+  }
+}
+
+/* Horizontal edge fade — used by the logos marquee */
+@utility mask-fade-x {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 10%,
+    black 90%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 10%,
+    black 90%,
+    transparent
+  );
+}
+
+@keyframes kn-eq {
+  0%,
+  100% {
+    transform: scaleY(0.32);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@utility animate-eq {
+  transform-origin: center;
+  animation: kn-eq 1.2s ease-in-out infinite;
+}
+
+@keyframes kn-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@utility animate-marquee {
+  animation: kn-marquee 32s linear infinite;
+}
+
+@keyframes kn-playhead {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  8%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@utility animate-playhead {
+  animation: kn-playhead 6s ease-in-out infinite;
+}
+
+@keyframes kn-aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(0, -3%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+@utility animate-aurora {
+  animation: kn-aurora 14s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------
+   Hero stem-player: "floating on water" bob + reflection ripple
+   ------------------------------------------------------------- */
+
+/* Gentle vertical bob with a hint of roll, like a card resting on
+   a slow swell. Duration/phase are overridden per-element (inline
+   animation-duration / -delay) so the card and its badges drift
+   out of sync, which sells the buoyant feel. */
+@keyframes kn-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.7deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(0.7deg);
+  }
+}
+@utility animate-float {
+  animation: kn-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Soft elliptical "reflection" under the card that contracts and
+   fades as the card lifts — reads as a shadow cast on water. */
+@keyframes kn-ripple {
+  0%,
+  100% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateX(-50%) scaleX(0.8);
+    opacity: 0.18;
+  }
+}
+@utility animate-ripple {
+  animation: kn-ripple 6s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------
+   Pipeline section: Upload -> Audio Processing -> Download
+   ------------------------------------------------------------- */
+
+/* Data packets streaming left->right (desktop rail) and top->bottom
+   (stacked mobile rail). The dot fades in/out at the ends so the
+   stream loops seamlessly. */
+@keyframes kn-flow-x {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@utility animate-flow-x {
+  animation: kn-flow-x 1.8s linear infinite;
+}
+@keyframes kn-flow-y {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+@utility animate-flow-y {
+  animation: kn-flow-y 1.8s linear infinite;
+}
+
+/* Slow rotation for the conic ring orbiting the processing core. */
+@keyframes kn-spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@utility animate-spin-slow {
+  animation: kn-spin-slow 7s linear infinite;
+}
+
+/* The core "engine" breathing — scale + radiating brand glow. */
+@keyframes kn-core {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 50%, transparent);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 42px 8px color-mix(in srgb, var(--brand) 38%, transparent);
+  }
+}
+@utility animate-core {
+  animation: kn-core 3s ease-in-out infinite;
+}
+
+/* Download progress ring filling, then the check popping in.
+   Both loop on the same period so they stay in step. */
+@keyframes kn-progress {
+  0% {
+    stroke-dashoffset: var(--circ);
+  }
+  70%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@utility animate-progress {
+  animation: kn-progress 3s ease-in-out infinite;
+}
+@keyframes kn-pop {
+  0%,
+  62% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  74% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  84%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@utility animate-pop {
+  animation: kn-pop 3s ease-in-out infinite;
+}
+
+/* Global safety net: kill all decorative loops when the user
+   asks for reduced motion (client components also guard in JS). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-eq,
+  .animate-marquee,
+  .animate-playhead,
+  .animate-aurora,
+  .animate-float,
+  .animate-ripple,
+  .animate-flow-x,
+  .animate-flow-y,
+  .animate-spin-slow,
+  .animate-core,
+  .animate-progress,
+  .animate-pop {
+    animation: none !important;
+  }
+}
