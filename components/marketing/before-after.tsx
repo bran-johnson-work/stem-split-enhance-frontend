@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
 import { Waveform } from "@/components/marketing/waveform";
+import { cn } from "@/lib/utils";
 
 /**
  * Interactive "muddy mix -> clean, mastered" comparison slider. One
@@ -57,25 +58,12 @@ export function BeforeAfter() {
           After
         </span>
 
-        {/* waveform stack — one shape, drawn twice and wiped by the divider */}
+        {/* waveform stack — one shape, drawn twice and wiped by the divider.
+            Fewer bars on mobile so the fixed inter-bar gaps don't overflow the
+            narrow track; the dense 150-bar look is kept from sm up. */}
         <div className="flex min-h-[260px] items-center px-6 py-12 sm:px-10">
-          <div className="relative h-28 w-full">
-            {/* BEFORE — muddy grey mix (full width, underneath) */}
-            <div className="absolute inset-0">
-              <Waveform
-                count={150}
-                seed={SEED}
-                barClassName="bg-muted-foreground/40"
-              />
-            </div>
-            {/* AFTER — mastered, same shape, revealed right of the divider */}
-            <div
-              className="absolute inset-0"
-              style={{ clipPath: `inset(0 0 0 ${pos}%)` }}
-            >
-              <Waveform count={150} seed={SEED} barClassName="bg-brand-gradient" />
-            </div>
-          </div>
+          <CompareWave count={110} pos={pos} className="sm:hidden" />
+          <CompareWave count={240} pos={pos} className="hidden sm:block" />
         </div>
 
         {/* divider */}
@@ -113,6 +101,46 @@ export function BeforeAfter() {
         Drag the divider to compare the original mix with the separated, mastered
         result.
       </p>
+    </div>
+  );
+}
+
+/**
+ * The muddy "Before" waveform with the mastered "After" layered on top and
+ * clipped at the divider. Rendered at different bar counts per breakpoint.
+ */
+function CompareWave({
+  count,
+  pos,
+  className,
+}: {
+  count: number;
+  pos: number;
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative h-28 w-full", className)}>
+      {/* BEFORE — muddy grey mix (full width, underneath) */}
+      <div className="absolute inset-0">
+        <Waveform
+          count={count}
+          seed={SEED}
+          className="gap-px"
+          barClassName="bg-muted-foreground/40"
+        />
+      </div>
+      {/* AFTER — mastered, same shape, revealed right of the divider */}
+      <div
+        className="absolute inset-0"
+        style={{ clipPath: `inset(0 0 0 ${pos}%)` }}
+      >
+        <Waveform
+          count={count}
+          seed={SEED}
+          className="gap-px"
+          barClassName="bg-brand-gradient"
+        />
+      </div>
     </div>
   );
 }

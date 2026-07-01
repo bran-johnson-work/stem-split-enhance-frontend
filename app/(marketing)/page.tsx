@@ -10,7 +10,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { BeforeAfter } from "@/components/marketing/before-after";
-import { ImageScroller } from "@/components/marketing/image-scroller";
+import { GalleryCoverflow } from "@/components/marketing/gallery-coverflow";
 import { LogosStrip } from "@/components/marketing/logos-strip";
 import { PipelineFlow } from "@/components/marketing/pipeline-flow";
 import { Faq } from "@/components/marketing/faq";
@@ -163,17 +163,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Image scroller (drag to scroll, constrained to section width) */}
+      {/* Image gallery — 3D coverflow carousel */}
       <section className="py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <Reveal>
             <SectionHeading
+              eyebrow="Product tour"
               title="A look inside KlearNote"
+              subtitle="Swipe through the workspace — from live processing to clean, isolated stems and a finished master."
               className="mx-auto"
             />
           </Reveal>
-          <Reveal className="mt-12">
-            <ImageScroller />
+          <Reveal className="mt-14">
+            <GalleryCoverflow />
           </Reveal>
         </div>
       </section>
@@ -195,13 +197,13 @@ export default function LandingPage() {
       </section>
 
       {/* Stats */}
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      {/* <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <Reveal>
           <StatsBand />
         </Reveal>
-      </section>
+      </section> */}
 
-      {/* How it works */}
+      {/* How it works
       <section
         id="how-it-works"
         className="border-border/60 bg-muted/30 border-t"
@@ -231,7 +233,7 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Features */}
       <section id="features">
@@ -296,13 +298,15 @@ export default function LandingPage() {
       <section className="border-border/60 border-t">
         <div className="mx-auto max-w-6xl px-4 py-20 sm:px-6">
           <Reveal>
-            <Card className="bg-brand-gradient relative overflow-hidden border-0 text-white">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_60%)]" />
+            <Card className="relative overflow-hidden">
+              {/* decorative backdrops — same colour treatment as the hero */}
+              <div className="bg-aurora animate-aurora pointer-events-none absolute inset-0 opacity-70 dark:opacity-60" />
+              <div className="pointer-events-none absolute inset-0 bg-[url('/cta-image.jpg')] bg-cover bg-center bg-no-repeat opacity-25 [mask-image:radial-gradient(ellipse_at_center,black,transparent_80%)] dark:opacity-30" />
               <CardContent className="relative flex flex-col items-center gap-6 py-14 text-center">
                 <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
                   Ready to hear your track, separated and mastered?
                 </h2>
-                <Button size="lg" variant="secondary" asChild>
+                <Button size="lg" asChild>
                   <Link href="/signup">
                     Get started free
                     <ArrowRight className="size-4" />

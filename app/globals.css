@@ -344,6 +344,46 @@
   will-change: transform;
 }
 
+/* Free-roaming drift for the auth brand-panel music icons. Each icon
+   wanders through three per-element waypoints (set inline as --kx/--ky
+   CSS vars in vw/vh) before easing back to its anchor, so glyphs travel
+   up, down, sideways and diagonally across the whole panel instead of a
+   barely-there vertical bob. Duration/phase are overridden per element so
+   the swarm never marches in lockstep. */
+@keyframes kn-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(var(--kx1, 0), var(--ky1, 0), 0);
+  }
+  50% {
+    transform: translate3d(var(--kx2, 0), var(--ky2, 0), 0);
+  }
+  75% {
+    transform: translate3d(var(--kx3, 0), var(--ky3, 0), 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+@utility animate-drift {
+  animation: kn-drift 30s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Auth brand panel → form column seam. Fade the panel's right edge to
+   transparent so the real page background (--background) shows through and the
+   two halves dissolve into each other. Masking the photo away — rather than
+   painting the bg colour on top of it — is what keeps the blend clean in BOTH
+   themes: the old paint-over-photo approach only looked smooth in dark mode
+   (dark over dark) and left a milky haze in light mode (white over a dark
+   photo). */
+@utility auth-panel-seam {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 10rem), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 10rem), transparent);
+}
+
 /* Soft elliptical "reflection" under the card that contracts and
    fades as the card lifts — reads as a shadow cast on water. */
 @keyframes kn-ripple {
@@ -471,6 +511,7 @@
   .animate-playhead,
   .animate-aurora,
   .animate-float,
+  .animate-drift,
   .animate-ripple,
   .animate-flow-x,
   .animate-flow-y,
