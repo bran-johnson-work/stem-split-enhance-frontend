@@ -1,0 +1,524 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* =============================================================
+   KlearNote design tokens — Red + White, Suno-inspired
+   Light = marketing/default · Dark = app (near-black, glow)
+   ============================================================= */
+
+:root {
+  --radius: 0.75rem;
+
+  /* surfaces & text */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* brand */
+  --primary: #b4030e;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #b4030e;
+
+  --chart-1: #b4030e;
+  --chart-2: #f59e0b;
+  --chart-3: #3b82f6;
+  --chart-4: #22c55e;
+  --chart-5: #6366f1;
+
+  /* sidebar (app shell) */
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #b4030e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #18181b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #b4030e;
+
+  /* KlearNote brand extras — aligned to logo red (#b4030e) */
+  --brand: #b4030e;
+  --brand-hover: #8c020b;
+  --brand-tint: #ffe5e7;
+  --gradient-from: #c40714;
+  --gradient-to: #8a020c;
+
+  /* 7 processing-pipeline states */
+  --state-queued: #71717a;
+  --state-analyzing: #3b82f6;
+  --state-separating: #6366f1;
+  --state-cleaning: #06b6d4;
+  --state-mastering: #f59e0b;
+  --state-completed: #22c55e;
+  --state-failed: #ef4444;
+}
+
+.dark {
+  --background: #0a0a0b;
+  --foreground: #fafafa;
+  --card: #161618;
+  --card-foreground: #fafafa;
+  --popover: #161618;
+  --popover-foreground: #fafafa;
+
+  --primary: #ff4655;
+  --primary-foreground: #ffffff;
+
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #1f1f23;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #27272a;
+  --input: #2a2a2e;
+  --ring: #ff4655;
+
+  --chart-1: #ff4655;
+  --chart-2: #f59e0b;
+  --chart-3: #60a5fa;
+  --chart-4: #4ade80;
+  --chart-5: #818cf8;
+
+  --sidebar: #0f0f11;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #ff4655;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f1f23;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #ff4655;
+
+  --brand: #ff4655;
+  --brand-hover: #ff6b76;
+  --brand-tint: #2a1416;
+  --gradient-from: #ff3b3b;
+  --gradient-to: #ff6b6b;
+
+  --state-queued: #a1a1aa;
+  --state-analyzing: #60a5fa;
+  --state-separating: #818cf8;
+  --state-cleaning: #22d3ee;
+  --state-mastering: #fbbf24;
+  --state-completed: #4ade80;
+  --state-failed: #f87171;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-tint: var(--brand-tint);
+
+  --color-queued: var(--state-queued);
+  --color-analyzing: var(--state-analyzing);
+  --color-separating: var(--state-separating);
+  --color-cleaning: var(--state-cleaning);
+  --color-mastering: var(--state-mastering);
+  --color-completed: var(--state-completed);
+  --color-failed: var(--state-failed);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Brand gradient helper used by hero / accents */
+@utility bg-brand-gradient {
+  background-image: linear-gradient(
+    135deg,
+    var(--gradient-from) 0%,
+    var(--gradient-to) 100%
+  );
+}
+
+/* =============================================================
+   Marketing / landing-page motion + decorative backdrops
+   All animation is GPU-friendly (transform/opacity) and is
+   disabled wholesale under prefers-reduced-motion (bottom).
+   ============================================================= */
+
+/* Faint grid overlay for hero / CTA backdrops */
+@utility bg-grid {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* Soft animated brand-coloured radial glows */
+@utility bg-aurora {
+  background-image:
+    radial-gradient(
+      40% 55% at 18% 22%,
+      color-mix(in srgb, var(--brand) 35%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      42% 55% at 82% 26%,
+      color-mix(in srgb, var(--gradient-to) 32%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      55% 60% at 50% 92%,
+      color-mix(in srgb, var(--gradient-from) 26%, transparent) 0%,
+      transparent 72%
+    );
+}
+
+/* Hide the native scrollbar while keeping the element scrollable */
+@utility no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+  &::-webkit-scrollbar {
+    display: none; /* Chrome / Safari */
+  }
+}
+
+/* Horizontal edge fade — used by the logos marquee */
+@utility mask-fade-x {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 10%,
+    black 90%,
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 10%,
+    black 90%,
+    transparent
+  );
+}
+
+@keyframes kn-eq {
+  0%,
+  100% {
+    transform: scaleY(0.32);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@utility animate-eq {
+  transform-origin: center;
+  animation: kn-eq 1.2s ease-in-out infinite;
+}
+
+@keyframes kn-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@utility animate-marquee {
+  animation: kn-marquee 32s linear infinite;
+}
+
+@keyframes kn-playhead {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  8%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@utility animate-playhead {
+  animation: kn-playhead 6s ease-in-out infinite;
+}
+
+@keyframes kn-aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(0, -3%, 0) scale(1.08);
+    opacity: 1;
+  }
+}
+@utility animate-aurora {
+  animation: kn-aurora 14s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------
+   Hero stem-player: "floating on water" bob + reflection ripple
+   ------------------------------------------------------------- */
+
+/* Gentle vertical bob with a hint of roll, like a card resting on
+   a slow swell. Duration/phase are overridden per-element (inline
+   animation-duration / -delay) so the card and its badges drift
+   out of sync, which sells the buoyant feel. */
+@keyframes kn-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.7deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(0.7deg);
+  }
+}
+@utility animate-float {
+  animation: kn-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Free-roaming drift for the auth brand-panel music icons. Each icon
+   wanders through three per-element waypoints (set inline as --kx/--ky
+   CSS vars in vw/vh) before easing back to its anchor, so glyphs travel
+   up, down, sideways and diagonally across the whole panel instead of a
+   barely-there vertical bob. Duration/phase are overridden per element so
+   the swarm never marches in lockstep. */
+@keyframes kn-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(var(--kx1, 0), var(--ky1, 0), 0);
+  }
+  50% {
+    transform: translate3d(var(--kx2, 0), var(--ky2, 0), 0);
+  }
+  75% {
+    transform: translate3d(var(--kx3, 0), var(--ky3, 0), 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+@utility animate-drift {
+  animation: kn-drift 30s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Auth brand panel → form column seam. Fade the panel's right edge to
+   transparent so the real page background (--background) shows through and the
+   two halves dissolve into each other. Masking the photo away — rather than
+   painting the bg colour on top of it — is what keeps the blend clean in BOTH
+   themes: the old paint-over-photo approach only looked smooth in dark mode
+   (dark over dark) and left a milky haze in light mode (white over a dark
+   photo). */
+@utility auth-panel-seam {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 10rem), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 10rem), transparent);
+}
+
+/* Soft elliptical "reflection" under the card that contracts and
+   fades as the card lifts — reads as a shadow cast on water. */
+@keyframes kn-ripple {
+  0%,
+  100% {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateX(-50%) scaleX(0.8);
+    opacity: 0.18;
+  }
+}
+@utility animate-ripple {
+  animation: kn-ripple 6s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------
+   Pipeline section: Upload -> Audio Processing -> Download
+   ------------------------------------------------------------- */
+
+/* Data packets streaming left->right (desktop rail) and top->bottom
+   (stacked mobile rail). The dot fades in/out at the ends so the
+   stream loops seamlessly. */
+@keyframes kn-flow-x {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@utility animate-flow-x {
+  animation: kn-flow-x 1.8s linear infinite;
+}
+@keyframes kn-flow-y {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+@utility animate-flow-y {
+  animation: kn-flow-y 1.8s linear infinite;
+}
+
+/* Slow rotation for the conic ring orbiting the processing core. */
+@keyframes kn-spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@utility animate-spin-slow {
+  animation: kn-spin-slow 7s linear infinite;
+}
+
+/* The core "engine" breathing — scale + radiating brand glow. */
+@keyframes kn-core {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--brand) 50%, transparent);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 42px 8px color-mix(in srgb, var(--brand) 38%, transparent);
+  }
+}
+@utility animate-core {
+  animation: kn-core 3s ease-in-out infinite;
+}
+
+/* Download progress ring filling, then the check popping in.
+   Both loop on the same period so they stay in step. */
+@keyframes kn-progress {
+  0% {
+    stroke-dashoffset: var(--circ);
+  }
+  70%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+@utility animate-progress {
+  animation: kn-progress 3s ease-in-out infinite;
+}
+@keyframes kn-pop {
+  0%,
+  62% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  74% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  84%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@utility animate-pop {
+  animation: kn-pop 3s ease-in-out infinite;
+}
+
+/* Global safety net: kill all decorative loops when the user
+   asks for reduced motion (client components also guard in JS). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-eq,
+  .animate-marquee,
+  .animate-playhead,
+  .animate-aurora,
+  .animate-float,
+  .animate-drift,
+  .animate-ripple,
+  .animate-flow-x,
+  .animate-flow-y,
+  .animate-spin-slow,
+  .animate-core,
+  .animate-progress,
+  .animate-pop {
+    animation: none !important;
+  }
+}
