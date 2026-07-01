@@ -17,7 +17,7 @@ import { Faq } from "@/components/marketing/faq";
 import { Reveal } from "@/components/marketing/reveal";
 import { RotatingWord } from "@/components/marketing/rotating-word";
 import { SectionHeading } from "@/components/marketing/section-heading";
-import { StatsBand } from "@/components/marketing/stats-band";
+// import { StatsBand } from "@/components/marketing/stats-band";
 import { StemPlayer } from "@/components/marketing/stem-player";
 import { Testimonials } from "@/components/marketing/testimonials";
 import { Button } from "@/components/ui/button";
@@ -56,11 +56,11 @@ const features = [
   },
 ];
 
-const steps = [
-  { n: "01", title: "Upload", body: "Drop in an AI-generated track in seconds." },
-  { n: "02", title: "Process", body: "We separate stems and master your track." },
-  { n: "03", title: "Download", body: "Export clean stems and an enhanced master." },
-];
+// const steps = [
+//   { n: "01", title: "Upload", body: "Drop in an AI-generated track in seconds." },
+//   { n: "02", title: "Process", body: "We separate stems and master your track." },
+//   { n: "03", title: "Download", body: "Export clean stems and an enhanced master." },
+// ];
 
 export default function LandingPage() {
   return (
