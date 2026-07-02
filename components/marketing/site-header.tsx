@@ -45,7 +45,12 @@ export function SiteHeader() {
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 mx-auto h-16 transition-all duration-500 ease-out motion-reduce:transition-none",
           scrolled
-            ? "top-3 max-w-6xl rounded-full border border-border/50 bg-background/40 shadow-lg shadow-black/[0.07] backdrop-blur-xl"
+            // inset-x-3: below max-w-6xl (mobile/tablet) the pill would otherwise
+            // fill the width edge-to-edge, so the rounded "floating" pill jams
+            // against both screen sides while still gapping the top. The inset
+            // gives it a matching side gap; it's a no-op on desktop, where
+            // mx-auto + max-w-6xl already center the pill with room to spare.
+            ? "inset-x-3 top-3 max-w-6xl rounded-full border border-border/50 bg-background/40 shadow-lg shadow-black/[0.07] backdrop-blur-xl"
             : "max-w-full border-b border-transparent bg-transparent",
         )}
       />

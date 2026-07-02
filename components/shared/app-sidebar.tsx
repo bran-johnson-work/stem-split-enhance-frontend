@@ -1,9 +1,10 @@
 "use client";
 
+import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import {
   Sidebar,
@@ -61,21 +62,27 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
  * clicking it expands the sidebar again.
  */
 function SidebarBrand() {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile } = useSidebar();
 
   return (
     <SidebarHeader className="p-2">
-      {/* Expanded: full logo + collapse button */}
+      {/* Expanded (and always on mobile): full logo + collapse/close button.
+          On mobile the drawer closes, so an X reads better than the desktop
+          "collapse" chevron. */}
       <div className="flex items-center justify-between gap-2 group-data-[collapsible=icon]:hidden">
         <Logo className="ml-1" />
         <button
           type="button"
           onClick={toggleSidebar}
-          aria-label="Collapse sidebar"
-          title="Collapse sidebar"
+          aria-label={isMobile ? "Close menu" : "Collapse sidebar"}
+          title={isMobile ? "Close menu" : "Collapse sidebar"}
           className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
         >
-          <PanelLeftClose className="size-4" />
+          {isMobile ? (
+            <X className="size-4" />
+          ) : (
+            <PanelLeftClose className="size-4" />
+          )}
         </button>
       </div>
 
@@ -114,6 +121,14 @@ function SidebarBrand() {
 
 export function AppSidebar() {
   const { data: user } = useCurrentUser();
+  const pathname = usePathname();
+  const { setOpenMobile } = useSidebar();
+
+  // Close the mobile drawer after navigating so it doesn't linger over the
+  // page the user just tapped through to. No-op on desktop.
+  React.useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   return (
     <Sidebar collapsible="icon">

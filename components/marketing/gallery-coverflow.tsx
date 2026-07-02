@@ -183,12 +183,18 @@ export function GalleryCoverflow() {
 
       {/* stage — arrows live outside so the edge fade doesn't dim them */}
       <div className="relative">
+        {/* overflow-x-clip: neighbour/parked cards are translated well past the
+            stage edges; without clipping they widen the document, which on
+            mobile expands the layout viewport and shoves the right-anchored
+            header drawer off-screen. `clip` (not `hidden`) keeps vertical
+            drop-shadows and never makes the stage a scroll container. Visually
+            a no-op — mask-fade-x already fades these edges to transparent. */}
         <div
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          className="mask-fade-x relative h-[clamp(11rem,44vw,20rem)] touch-pan-y [perspective:1200px]"
+          className="mask-fade-x relative h-[clamp(11rem,44vw,20rem)] touch-pan-y overflow-x-clip [perspective:1200px]"
         >
           {slides.map((slide, i) => {
             let offset = i - active;
