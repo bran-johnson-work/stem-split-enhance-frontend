@@ -1,7 +1,13 @@
 // Uploader seam. The queue (lib/hooks/use-upload-queue.ts) is written against
-// the `Uploader` contract and never knows *how* a file is transferred — today
-// it's a simulated transfer, later it's a real presigned PUT to Supabase
-// Storage. Swapping one for the other is a single change in `selectUploader`.
+// the `Uploader` contract and never knows *how* a file is transferred — it may be
+// a simulated transfer (no backend) or a real presigned PUT to Supabase Storage.
+// Swapping one for the other is a single change in `selectUploader`.
+
+import { apiFetch } from "@/lib/api/fetch";
+import type {
+  SignUploadRequest,
+  SignUploadResponse,
+} from "@/lib/upload/sign-contract";
 
 export interface UploadResult {
   /** Path of the object in storage, e.g. `uploads/<uuid>/<filename>`. */
@@ -114,12 +120,56 @@ export function xhrUpload(
 }
 
 /**
- * Chooses the active uploader. Front-end MVP uses the simulated transfer.
+ * Presigned uploader: ask a signer for a scoped upload URL, then stream the bytes
+ * straight to Supabase Storage with progress. The signer is chosen by
+ * `selectUploader` — our own Next.js route now, Dakota's backend later — but this
+ * function is identical for both because they share the SignUpload contract.
+ */
+export function createPresignedUploader(signEndpoint: string): Uploader {
+  return async (file, { onProgress, signal }) => {
+    if (signal.aborted) throw abortError();
+
+    // 1. Ask the signer for a scoped, single-use upload URL. The signer owns the
+    //    object path; we treat it as opaque. The abort signal is forwarded so a
+    //    cancel during signing (before any bytes move) rejects cleanly.
+    const { signedUrl, path } = await apiFetch<SignUploadResponse>(signEndpoint, {
+      method: "POST",
+      signal,
+      json: {
+        fileName: file.name,
+        contentType: file.type || "application/octet-stream",
+        size: file.size,
+      } satisfies SignUploadRequest,
+    });
+
+    // 2. PUT the bytes with upload progress. (xhrUpload's own returned path is a
+    //    placeholder — the signer's `path` below is the canonical one.)
+    await xhrUpload(signedUrl, file, { onProgress, signal });
+
+    // 3. Forward the signer's path verbatim to createProject.
+    return { storagePath: path };
+  };
+}
+
+/**
+ * Chooses the active uploader from env, in priority order:
+ *   1. `NEXT_PUBLIC_API_URL` set → Dakota's backend signs (and owns metadata).
+ *   2. `NEXT_PUBLIC_SUPABASE_URL` set → our own /api/uploads/sign route signs
+ *      (real Supabase Storage, service-role key server-side).
+ *   3. neither → simulated transfer so the queue UX works with no backend.
  *
- * TODO(backend): when `NEXT_PUBLIC_API_URL` is set, return a presigned uploader
- * that POSTs to `/api/uploads/sign` for a scoped signed URL, then delegates to
- * `xhrUpload(signedUrl, file, handlers)`. The queue needs no changes.
+ * Only the sign endpoint moves between (1) and (2); the browser→Supabase upload
+ * is identical, so switching to Dakota is a one-env-var change with no rework.
  */
 export function selectUploader(): Uploader {
+  const backendUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (backendUrl) {
+    return createPresignedUploader(
+      `${backendUrl.replace(/\/+$/, "")}/uploads/sign`,
+    );
+  }
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return createPresignedUploader("/api/uploads/sign");
+  }
   return simulatedUploader;
 }
