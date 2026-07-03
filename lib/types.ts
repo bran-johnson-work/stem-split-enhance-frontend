@@ -46,6 +46,15 @@ export interface Project {
   error?: string;
 }
 
+// Payload for creating a project once its source file has been uploaded.
+export interface CreateProjectInput {
+  sourceFileName: string;
+  sourceSizeBytes: number;
+  title?: string;
+  storagePath?: string;
+  durationSec?: number;
+}
+
 export type PlanId = "free" | "creator" | "pro" | "studio";
 
 export interface Plan {

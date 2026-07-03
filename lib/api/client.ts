@@ -7,6 +7,7 @@ import {
 } from "@/lib/mock/fixtures";
 import type {
   AdminUserRow,
+  CreateProjectInput,
   Invoice,
   Paginated,
   Plan,
@@ -28,6 +29,7 @@ export interface KlearNoteApi {
     search?: string;
   }): Promise<Paginated<Project>>;
   getProject(id: string): Promise<Project>;
+  createProject(input: CreateProjectInput): Promise<Project>;
   getPlans(): Promise<Plan[]>;
   getSubscription(): Promise<Subscription>;
   listInvoices(): Promise<Invoice[]>;
@@ -72,6 +74,31 @@ export class MockApi implements KlearNoteApi {
     await delay(250);
     const project = PROJECTS.find((p) => p.id === id);
     if (!project) throw new Error(`Project ${id} not found`);
+    return clone(project);
+  }
+
+  async createProject(input: CreateProjectInput) {
+    await delay(300);
+    const nowIso = new Date().toISOString();
+    const title =
+      input.title?.trim() ||
+      input.sourceFileName.replace(/\.[^./\\]+$/, "") ||
+      "Untitled track";
+    const project: Project = {
+      id: `p_${Date.now()}`,
+      title,
+      status: "queued",
+      progress: 0,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      sourceFileName: input.sourceFileName,
+      sourceSizeBytes: input.sourceSizeBytes,
+      durationSec: input.durationSec ?? 0,
+      stems: [],
+    };
+    // Prepend to the in-memory fixture so the new track shows up in history
+    // across client navigations (resets on a full page reload — mock only).
+    PROJECTS.unshift(project);
     return clone(project);
   }
 

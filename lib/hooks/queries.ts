@@ -1,7 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import type { CreateProjectInput, Paginated, Project } from "@/lib/types";
+
+function titleFromFile(input: CreateProjectInput): string {
+  return (
+    input.title?.trim() ||
+    input.sourceFileName.replace(/\.[^./\\]+$/, "") ||
+    "Untitled track"
+  );
+}
 
 export const queryKeys = {
   currentUser: ["current-user"] as const,
@@ -34,6 +43,48 @@ export function useProject(id: string) {
     queryKey: queryKeys.project(id),
     queryFn: () => api.getProject(id),
     enabled: Boolean(id),
+  });
+}
+
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateProjectInput) => api.createProject(input),
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+      const previous = queryClient.getQueriesData<Paginated<Project>>({
+        queryKey: ["projects"],
+      });
+      const nowIso = new Date().toISOString();
+      const optimistic: Project = {
+        id: `temp_${Date.now()}`,
+        title: titleFromFile(input),
+        status: "queued",
+        progress: 0,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        sourceFileName: input.sourceFileName,
+        sourceSizeBytes: input.sourceSizeBytes,
+        durationSec: input.durationSec ?? 0,
+        stems: [],
+      };
+      queryClient.setQueriesData<Paginated<Project>>(
+        { queryKey: ["projects"] },
+        (old) =>
+          old
+            ? { ...old, items: [optimistic, ...old.items], total: old.total + 1 }
+            : old,
+      );
+      return { previous };
+    },
+    onError: (_err, _input, context) => {
+      context?.previous?.forEach(([key, data]) =>
+        queryClient.setQueryData(key, data),
+      );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    },
   });
 }
 

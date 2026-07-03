@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { CircleAlert, FileAudio, UploadCloud, X } from "lucide-react";
+import { CircleAlert, UploadCloud } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
@@ -14,34 +13,34 @@ import {
 } from "@/lib/validations/upload";
 
 export function UploadDropzone({
-  file,
-  onFileAccepted,
-  onClear,
+  onFilesAccepted,
   disabled = false,
 }: {
-  file: File | null;
-  onFileAccepted: (file: File) => void;
-  onClear: () => void;
+  onFilesAccepted: (files: File[]) => void;
   disabled?: boolean;
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const dragDepth = React.useRef(0);
   const [dragActive, setDragActive] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [rejects, setRejects] = React.useState<string[]>([]);
 
   const accept = React.useCallback(
-    (files: FileList | null) => {
-      const picked = files?.[0];
-      if (!picked) return;
-      const result = validateAudioFile(picked);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+    (list: FileList | null) => {
+      const files = list ? Array.from(list) : [];
+      if (files.length === 0) return;
+
+      const accepted: File[] = [];
+      const rejected: string[] = [];
+      for (const file of files) {
+        const result = validateAudioFile(file);
+        if (result.ok) accepted.push(file);
+        else rejected.push(`${file.name} — ${result.error}`);
       }
-      setError(null);
-      onFileAccepted(picked);
+
+      setRejects(rejected);
+      if (accepted.length) onFilesAccepted(accepted);
     },
-    [onFileAccepted],
+    [onFilesAccepted],
   );
 
   function onDrop(e: React.DragEvent) {
@@ -56,7 +55,7 @@ export function UploadDropzone({
     e.preventDefault();
     if (disabled) return;
     dragDepth.current += 1;
-    setError(null);
+    setRejects([]);
     setDragActive(true);
   }
 
@@ -69,31 +68,6 @@ export function UploadDropzone({
     }
   }
 
-  if (file) {
-    return (
-      <div className="bg-card flex items-center gap-4 rounded-xl border p-4">
-        <div className="bg-brand-tint text-brand grid size-12 shrink-0 place-items-center rounded-lg">
-          <FileAudio className="size-6" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{file.name}</p>
-          <p className="text-muted-foreground text-sm">
-            {formatBytes(file.size)} · Ready to process
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={onClear}
-          aria-label={`Remove ${file.name}`}
-        >
-          <X className="size-4" />
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-3">
       <button
@@ -104,14 +78,14 @@ export function UploadDropzone({
         onDragOver={(e) => e.preventDefault()}
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
-        aria-label="Upload a track. Drag and drop an audio file here, or activate to browse."
+        aria-label="Upload tracks. Drag and drop audio files here, or activate to browse."
         className={cn(
           "group flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-6 py-14 text-center outline-none transition-colors",
           "border-border hover:border-brand/50 hover:bg-muted/40",
           "focus-visible:border-brand focus-visible:ring-ring/40 focus-visible:ring-[3px]",
           "disabled:pointer-events-none disabled:opacity-60",
           dragActive && "border-brand bg-brand-tint/60",
-          error && "border-destructive/60 bg-destructive/5",
+          rejects.length > 0 && "border-destructive/60 bg-destructive/5",
         )}
       >
         <span
@@ -126,8 +100,8 @@ export function UploadDropzone({
         <span className="space-y-1">
           <span className="block font-medium">
             {dragActive
-              ? "Drop your track to upload"
-              : "Drag & drop your track"}
+              ? "Drop your tracks to upload"
+              : "Drag & drop your tracks"}
           </span>
           <span className="text-muted-foreground block text-sm">
             or{" "}
@@ -138,7 +112,7 @@ export function UploadDropzone({
           </span>
         </span>
         <span className="text-muted-foreground text-xs">
-          {ACCEPTED_LABEL} · up to {formatBytes(MAX_UPLOAD_BYTES)}
+          {ACCEPTED_LABEL} · up to {formatBytes(MAX_UPLOAD_BYTES)} each
         </span>
       </button>
 
@@ -146,6 +120,7 @@ export function UploadDropzone({
         ref={inputRef}
         type="file"
         accept={ACCEPT_ATTR}
+        multiple
         tabIndex={-1}
         className="sr-only"
         onChange={(e) => {
@@ -154,10 +129,21 @@ export function UploadDropzone({
         }}
       />
 
-      {error && (
+      {rejects.length > 0 && (
         <Alert variant="destructive">
           <CircleAlert />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>
+            <span className="font-medium">
+              {rejects.length === 1
+                ? "1 file wasn't added:"
+                : `${rejects.length} files weren't added:`}
+            </span>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {rejects.map((r) => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </AlertDescription>
         </Alert>
       )}
     </div>
