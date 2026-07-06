@@ -31,6 +31,15 @@ export interface Stem {
   durationSec: number;
 }
 
+// One uploaded source file within a project. A project may hold several (a batch
+// upload) — mirrors the backend's `input_files[]`.
+export interface ProjectInputFile {
+  id: string;
+  filename: string;
+  sizeBytes: number;
+  contentType: string;
+}
+
 export interface Project {
   id: string;
   title: string;
@@ -38,10 +47,11 @@ export interface Project {
   progress: number; // 0..100
   createdAt: string; // ISO
   updatedAt: string; // ISO
-  sourceFileName: string;
+  sourceFileName: string; // primary (first) input file — kept for existing single-file UI
   sourceSizeBytes: number;
   durationSec: number;
   stems: Stem[];
+  inputFiles?: ProjectInputFile[]; // all uploaded source files (batch)
   masterUrl?: string;
   error?: string;
 }
