@@ -1,16 +1,13 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { CreateProjectInput, Paginated, Project } from "@/lib/types";
+import { getCurrentUser } from "@/lib/api/auth";
+import { USE_REAL_BACKEND } from "@/lib/config";
+import { isTerminal } from "@/lib/processing/pipeline";
 
-function titleFromFile(input: CreateProjectInput): string {
-  return (
-    input.title?.trim() ||
-    input.sourceFileName.replace(/\.[^./\\]+$/, "") ||
-    "Untitled track"
-  );
-}
+/** Poll cadence for a live (non-terminal) project's status. */
+const PROJECT_POLL_MS = 4000;
 
 export const queryKeys = {
   currentUser: ["current-user"] as const,
@@ -25,9 +22,11 @@ export const queryKeys = {
 };
 
 export function useCurrentUser() {
+  // Sourced from the real /users/me endpoint (mapped to `User`) when a backend
+  // is configured, or the mock user otherwise — see lib/api/auth.getCurrentUser.
   return useQuery({
     queryKey: queryKeys.currentUser,
-    queryFn: () => api.getCurrentUser(),
+    queryFn: () => getCurrentUser(),
   });
 }
 
@@ -43,50 +42,19 @@ export function useProject(id: string) {
     queryKey: queryKeys.project(id),
     queryFn: () => api.getProject(id),
     enabled: Boolean(id),
+    // Real backend: poll for status until the project reaches a terminal state.
+    // Mock: no polling — the local simulator (useProcessingStatus) drives the UI.
+    refetchInterval: (query) => {
+      if (!USE_REAL_BACKEND) return false;
+      const data = query.state.data;
+      return data && isTerminal(data.status) ? false : PROJECT_POLL_MS;
+    },
   });
 }
 
-export function useCreateProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateProjectInput) => api.createProject(input),
-    onMutate: async (input) => {
-      await queryClient.cancelQueries({ queryKey: ["projects"] });
-      const previous = queryClient.getQueriesData<Paginated<Project>>({
-        queryKey: ["projects"],
-      });
-      const nowIso = new Date().toISOString();
-      const optimistic: Project = {
-        id: `temp_${Date.now()}`,
-        title: titleFromFile(input),
-        status: "queued",
-        progress: 0,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-        sourceFileName: input.sourceFileName,
-        sourceSizeBytes: input.sourceSizeBytes,
-        durationSec: input.durationSec ?? 0,
-        stems: [],
-      };
-      queryClient.setQueriesData<Paginated<Project>>(
-        { queryKey: ["projects"] },
-        (old) =>
-          old
-            ? { ...old, items: [optimistic, ...old.items], total: old.total + 1 }
-            : old,
-      );
-      return { previous };
-    },
-    onError: (_err, _input, context) => {
-      context?.previous?.forEach(([key, data]) =>
-        queryClient.setQueryData(key, data),
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    },
-  });
-}
+// Project creation now happens inside the upload flow (create → sign → PUT →
+// complete); the finalised project is inserted into these caches by
+// lib/hooks/use-upload-batch, so there's no standalone createProject mutation.
 
 export function usePlans() {
   return useQuery({ queryKey: queryKeys.plans, queryFn: () => api.getPlans() });

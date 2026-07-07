@@ -1,16 +1,11 @@
-// Uploader seam. The queue (lib/hooks/use-upload-queue.ts) is written against
-// the `Uploader` contract and never knows *how* a file is transferred — it may be
-// a simulated transfer (no backend) or a real presigned PUT to Supabase Storage.
-// Swapping one for the other is a single change in `selectUploader`.
-
-import { apiFetch } from "@/lib/api/fetch";
-import type {
-  SignUploadRequest,
-  SignUploadResponse,
-} from "@/lib/upload/sign-contract";
+// Uploader seam. The queue (lib/hooks/use-upload-queue.ts) is written against the
+// `Uploader` contract and never knows *how* a file is transferred — a simulated
+// transfer (no backend) or a real presigned PUT to Supabase Storage. The
+// project-aware presigned uploader is assembled in lib/upload/upload-batch.ts;
+// this module holds the transport primitives it (and the simulator) build on.
 
 export interface UploadResult {
-  /** Path of the object in storage, e.g. `uploads/<uuid>/<filename>`. */
+  /** Path of the object in storage, e.g. `<user>/<project>/<filename>`. */
   storagePath: string;
   /** Public/download URL, when the backend returns one. */
   url?: string;
@@ -79,13 +74,16 @@ export const simulatedUploader: Uploader = (file, { onProgress, signal }) =>
 
 /**
  * Real, transport-level PUT with progress — the reusable building block for the
- * future Supabase path (`XMLHttpRequest`, not `fetch`, because only XHR exposes
- * upload progress events). Not wired into `selectUploader` yet.
+ * presigned Supabase path (`XMLHttpRequest`, not `fetch`, because only XHR
+ * exposes upload-progress events). `contentType` must match the value declared
+ * when the upload URL was signed; no `Authorization` header is sent (the signed
+ * URL carries its own single-use token).
  */
 export function xhrUpload(
   url: string,
   file: File,
   { onProgress, signal }: UploadHandlers,
+  contentType?: string,
 ): Promise<UploadResult> {
   return new Promise<UploadResult>((resolve, reject) => {
     if (signal.aborted) return reject(abortError());
@@ -114,62 +112,10 @@ export function xhrUpload(
     };
     signal.addEventListener("abort", onAbort);
 
-    xhr.setRequestHeader("content-type", file.type || "application/octet-stream");
+    xhr.setRequestHeader(
+      "content-type",
+      contentType || file.type || "application/octet-stream",
+    );
     xhr.send(file);
   });
-}
-
-/**
- * Presigned uploader: ask a signer for a scoped upload URL, then stream the bytes
- * straight to Supabase Storage with progress. The signer is chosen by
- * `selectUploader` — our own Next.js route now, Dakota's backend later — but this
- * function is identical for both because they share the SignUpload contract.
- */
-export function createPresignedUploader(signEndpoint: string): Uploader {
-  return async (file, { onProgress, signal }) => {
-    if (signal.aborted) throw abortError();
-
-    // 1. Ask the signer for a scoped, single-use upload URL. The signer owns the
-    //    object path; we treat it as opaque. The abort signal is forwarded so a
-    //    cancel during signing (before any bytes move) rejects cleanly.
-    const { signedUrl, path } = await apiFetch<SignUploadResponse>(signEndpoint, {
-      method: "POST",
-      signal,
-      json: {
-        fileName: file.name,
-        contentType: file.type || "application/octet-stream",
-        size: file.size,
-      } satisfies SignUploadRequest,
-    });
-
-    // 2. PUT the bytes with upload progress. (xhrUpload's own returned path is a
-    //    placeholder — the signer's `path` below is the canonical one.)
-    await xhrUpload(signedUrl, file, { onProgress, signal });
-
-    // 3. Forward the signer's path verbatim to createProject.
-    return { storagePath: path };
-  };
-}
-
-/**
- * Chooses the active uploader from env, in priority order:
- *   1. `NEXT_PUBLIC_API_URL` set → Dakota's backend signs (and owns metadata).
- *   2. `NEXT_PUBLIC_SUPABASE_URL` set → our own /api/uploads/sign route signs
- *      (real Supabase Storage, service-role key server-side).
- *   3. neither → simulated transfer so the queue UX works with no backend.
- *
- * Only the sign endpoint moves between (1) and (2); the browser→Supabase upload
- * is identical, so switching to Dakota is a one-env-var change with no rework.
- */
-export function selectUploader(): Uploader {
-  const backendUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (backendUrl) {
-    return createPresignedUploader(
-      `${backendUrl.replace(/\/+$/, "")}/uploads/sign`,
-    );
-  }
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    return createPresignedUploader("/api/uploads/sign");
-  }
-  return simulatedUploader;
 }

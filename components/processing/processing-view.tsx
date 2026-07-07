@@ -27,12 +27,16 @@ import { useProcessingStatus } from "@/lib/hooks/use-processing-status";
 import type { Project } from "@/lib/types";
 
 export function ProcessingView({ project }: { project: Project }) {
-  const { status, progress, stageProgress, isRunning, retry } =
+  const { status, progress, stageProgress, isRunning, isSimulated, retry } =
     useProcessingStatus(project);
 
   const handleRetry = () => {
     retry();
-    toast.success("Retrying — your track is back in the queue.");
+    toast.success(
+      isSimulated
+        ? "Retrying — your track is back in the queue."
+        : "Refreshing status…",
+    );
   };
 
   return (
