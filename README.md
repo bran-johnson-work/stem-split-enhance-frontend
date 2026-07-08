@@ -13,7 +13,9 @@ backend/API is provided separately; the app currently runs against a typed
 - **Tailwind CSS v4** + **shadcn/ui** (new-york) on **Radix UI** primitives
 - **TanStack Query** for server state, **react-hook-form** + **zod** for forms
 - **sonner** for toasts, **next-themes** (dark/light), **Geist** font
-- **wavesurfer.js** for waveform/audio playback (Phase 2)
+- **wavesurfer.js** for audio waveforms (marketing before/after demo today; stem
+  player upcoming — the processing hero waveform is pure CSS)
+- **@supabase/supabase-js** for Storage uploads via presigned URLs (env-gated)
 
 ## Getting started
 
@@ -45,9 +47,12 @@ Scripts:
 
 ## Status & roadmap
 
-Fully built screens are wired to the mock layer and ready for review. Remaining
-screens ship as phased placeholders (`PlaceholderPage`) so navigation, layouts
-and access rules are already in place.
+**Currently at the end of Week 2 (Day 9 of 15).** The core product journey —
+sign-up → upload → processing → history — is built and env-gated to a real
+backend. Remaining screens (settings, billing, admin) ship as phased
+placeholders (`PlaceholderPage`) so navigation, layouts and access rules are
+already in place. See [docs/sprint-backlog.md](docs/sprint-backlog.md) for the
+day-by-day breakdown.
 
 | Screen | Route | Status |
 | --- | --- | --- |
@@ -55,10 +60,12 @@ and access rules are already in place.
 | Pricing | `/pricing` | ✅ Built |
 | Login / Signup / Verify email | `/login` `/signup` `/verify-email` | ✅ Built (real auth, env-gated) |
 | Forgot / Reset password | `/forgot-password` `/reset-password` | ✅ Built (mock — no backend endpoint yet) |
-| Dashboard | `/dashboard` | ✅ Built (mock data) |
+| Dashboard | `/dashboard` | ✅ Built (stats, recent projects, live progress) |
+| Upload | `/upload` | ✅ Built (drag-drop queue, progress, presigned uploads — env-gated) |
+| Projects (history) | `/projects` | ✅ Built (table/cards, search, status filter, URL-synced pagination) |
+| Project detail (processing) | `/projects/[id]` | ✅ Built (7-state stepper, waveform, retry; live-status polling) |
 | Styleguide | `/styleguide` | ✅ Built |
-| Upload | `/upload` | 🔜 Phase 2 |
-| Projects / Project detail | `/projects` `/projects/[id]` | 🔜 Phase 2 |
+| Download & stem player | `/projects/[id]` (completed) | 🔜 Phase 2 |
 | Settings | `/settings` | 🔜 Phase 3 |
 | Billing | `/billing` | 🔜 Phase 3 |
 | Admin (overview / projects / users) | `/admin` `/admin/projects` `/admin/users` | 🔜 Phase 4 |
@@ -104,15 +111,24 @@ app/
   layout.tsx  providers.tsx                  — root shell + client providers
 components/
   ui/            shadcn primitives
-  marketing/ auth/ shared/ projects/         feature components
+  marketing/ auth/ shared/                    feature components
+  upload/ projects/ processing/               upload queue · history · pipeline view
 lib/
-  api/           typed KlearNoteApi interface + mock client (swap point) + auth.ts
+  api/           typed KlearNoteApi interface + mock/http clients (swap point) + auth.ts
   auth/          token cookie, AuthProvider, password-reset mocks
+  upload/        pluggable uploader seam (simulated / presigned-PUT)
+  processing/    pure pipeline state machine (single source of truth)
+  projects/      history filter groups (UI buckets → ProjectStatus[])
   mock/          fixtures
-  hooks/         TanStack Query hooks + use-mobile
+  hooks/         TanStack Query hooks + live processing status + use-mobile
   validations/   zod schemas
   types.ts  format.ts  nav.ts  utils.ts (cn)
 ```
+
+Deeper design notes live in [`docs/`](docs/): the processing transport
+([processing-pipeline.md](docs/processing-pipeline.md)), presigned uploads
+([upload-signing.md](docs/upload-signing.md)), the history view
+([projects-history.md](docs/projects-history.md)), and the sprint backlog.
 
 ## Backend integration
 
