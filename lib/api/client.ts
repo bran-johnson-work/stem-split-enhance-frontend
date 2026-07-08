@@ -7,10 +7,12 @@ import {
 } from "@/lib/mock/fixtures";
 import type {
   AdminUserRow,
+  CreateProjectInput,
   Invoice,
   Paginated,
   Plan,
   Project,
+  ProjectStatus,
   Subscription,
   User,
 } from "@/lib/types";
@@ -26,8 +28,11 @@ export interface KlearNoteApi {
     page?: number;
     pageSize?: number;
     search?: string;
+    /** Restrict to these statuses (e.g. the "processing" group). Omit = all. */
+    status?: ProjectStatus[];
   }): Promise<Paginated<Project>>;
   getProject(id: string): Promise<Project>;
+  createProject(input: CreateProjectInput): Promise<Project>;
   getPlans(): Promise<Plan[]>;
   getSubscription(): Promise<Subscription>;
   listInvoices(): Promise<Invoice[]>;
@@ -51,14 +56,22 @@ export class MockApi implements KlearNoteApi {
     page?: number;
     pageSize?: number;
     search?: string;
+    status?: ProjectStatus[];
   }) {
     await delay();
     const page = params?.page ?? 1;
     const pageSize = params?.pageSize ?? 10;
     const search = (params?.search ?? "").trim().toLowerCase();
-    const filtered = search
-      ? PROJECTS.filter((p) => p.title.toLowerCase().includes(search))
-      : PROJECTS;
+    const status = params?.status;
+    let filtered = PROJECTS;
+    if (status && status.length) {
+      filtered = filtered.filter((p) => status.includes(p.status));
+    }
+    if (search) {
+      filtered = filtered.filter((p) =>
+        p.title.toLowerCase().includes(search),
+      );
+    }
     const start = (page - 1) * pageSize;
     return {
       items: clone(filtered.slice(start, start + pageSize)),
@@ -72,6 +85,31 @@ export class MockApi implements KlearNoteApi {
     await delay(250);
     const project = PROJECTS.find((p) => p.id === id);
     if (!project) throw new Error(`Project ${id} not found`);
+    return clone(project);
+  }
+
+  async createProject(input: CreateProjectInput) {
+    await delay(300);
+    const nowIso = new Date().toISOString();
+    const title =
+      input.title?.trim() ||
+      input.sourceFileName.replace(/\.[^./\\]+$/, "") ||
+      "Untitled track";
+    const project: Project = {
+      id: `p_${Date.now()}`,
+      title,
+      status: "queued",
+      progress: 0,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      sourceFileName: input.sourceFileName,
+      sourceSizeBytes: input.sourceSizeBytes,
+      durationSec: input.durationSec ?? 0,
+      stems: [],
+    };
+    // Prepend to the in-memory fixture so the new track shows up in history
+    // across client navigations (resets on a full page reload — mock only).
+    PROJECTS.unshift(project);
     return clone(project);
   }
 

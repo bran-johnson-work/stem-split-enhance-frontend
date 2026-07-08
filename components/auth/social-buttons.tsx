@@ -1,11 +1,6 @@
 "use client";
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { mockOAuth } from "@/lib/auth/mock-auth";
 
 /** Google's multi-colour "G" mark. lucide ships no brand logos. */
 function GoogleIcon({ className }: { className?: string }) {
@@ -33,45 +28,30 @@ function GoogleIcon({ className }: { className?: string }) {
 
 /**
  * Google sign-in button + an "or continue with email" divider. Shared by the
- * login and signup forms. Uses the mock OAuth flow until the backend lands.
+ * login and signup forms. The API doc exposes no OAuth endpoint, so the button
+ * is disabled and marked "Soon" until Google sign-in ships on the backend.
  */
 export function SocialButtons({
   label,
-  successMessage = "Welcome to KlearNote!",
 }: {
   label: string;
+  /** Retained for call-site compatibility; unused while Google sign-in is deferred. */
   successMessage?: string;
 }) {
-  const router = useRouter();
-  const [loading, setLoading] = React.useState(false);
-
-  async function handleGoogle() {
-    setLoading(true);
-    try {
-      await mockOAuth("google");
-      toast.success(successMessage);
-      router.push("/dashboard");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong.");
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="space-y-4">
       <Button
         type="button"
         variant="outline"
         className="w-full"
-        onClick={handleGoogle}
-        disabled={loading}
+        disabled
+        title="Google sign-in is coming soon"
       >
-        {loading ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <GoogleIcon className="size-4" />
-        )}
+        <GoogleIcon className="size-4" />
         {label}
+        <span className="bg-muted text-muted-foreground ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-wide uppercase">
+          Soon
+        </span>
       </Button>
       <div className="relative">
         <div className="absolute inset-0 flex items-center" aria-hidden>

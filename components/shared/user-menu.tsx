@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CreditCard, LogOut, Settings, Shield } from "lucide-react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/auth/auth-context";
 import { useCurrentUser } from "@/lib/hooks/queries";
 
 function initials(name?: string) {
@@ -26,6 +29,14 @@ function initials(name?: string) {
 
 export function UserMenu() {
   const { data: user } = useCurrentUser();
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await logout();
+    toast.success("Signed out.");
+    router.push("/login");
+  }
 
   return (
     <DropdownMenu>
@@ -72,10 +83,8 @@ export function UserMenu() {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/login">
-            <LogOut className="size-4" /> Sign out
-          </Link>
+        <DropdownMenuItem onSelect={handleSignOut}>
+          <LogOut className="size-4" /> Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

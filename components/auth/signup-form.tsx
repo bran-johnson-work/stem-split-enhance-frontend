@@ -22,11 +22,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { mockSignup } from "@/lib/auth/mock-auth";
+import { useAuth } from "@/lib/auth/auth-context";
 import { signupSchema, type SignupValues } from "@/lib/validations/auth";
 
 export function SignupForm() {
   const router = useRouter();
+  const { register } = useAuth();
   const [formError, setFormError] = React.useState<string | null>(null);
   const form = useForm<SignupValues>({
     resolver: zodResolver(signupSchema),
@@ -36,7 +37,13 @@ export function SignupForm() {
   async function onSubmit(values: SignupValues) {
     setFormError(null);
     try {
-      await mockSignup(values);
+      const { needsVerification } = await register(values);
+      if (needsVerification) {
+        // Real backend: account is unverified — confirm email before logging in.
+        toast.success("Account created — check your email to verify.");
+        router.push(`/verify-email?email=${encodeURIComponent(values.email)}`);
+        return;
+      }
       toast.success("Account created — welcome to KlearNote!");
       router.push("/dashboard");
     } catch (err) {

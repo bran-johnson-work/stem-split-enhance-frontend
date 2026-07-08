@@ -28,6 +28,29 @@ function stems(prefix: string, durationSec: number): Stem[] {
   }));
 }
 
+function completed(
+  id: string,
+  title: string,
+  sourceFileName: string,
+  sourceSizeBytes: number,
+  durationSec: number,
+  createdMsAgo: number,
+): Project {
+  return {
+    id,
+    title,
+    status: "completed",
+    progress: 100,
+    createdAt: iso(createdMsAgo),
+    updatedAt: iso(createdMsAgo - 7 * 60 * 1000),
+    sourceFileName,
+    sourceSizeBytes,
+    durationSec,
+    stems: stems(id, durationSec),
+    masterUrl: `/mock/${id}/master.wav`,
+  };
+}
+
 export const PLANS: Plan[] = [
   {
     id: "free",
@@ -154,6 +177,68 @@ export const PROJECTS: Project[] = [
     durationSec: 176,
     stems: [],
   },
+  {
+    id: "p_1006",
+    title: "Velvet Static",
+    status: "analyzing",
+    progress: 12,
+    createdAt: iso(0.03 * DAY),
+    updatedAt: iso(0.02 * DAY),
+    sourceFileName: "velvet-static.mp3",
+    sourceSizeBytes: 8_200_000,
+    durationSec: 201,
+    stems: [],
+  },
+  completed("p_1007", "Golden Hour", "golden-hour.wav", 72_900_000, 198, 1 * DAY),
+  completed("p_1008", "Paper Planes", "paper-planes.mp3", 7_400_000, 167, 1.4 * DAY),
+  {
+    id: "p_1009",
+    title: "Undertow",
+    status: "cleaning",
+    progress: 63,
+    createdAt: iso(0.08 * DAY),
+    updatedAt: iso(0.01 * DAY),
+    sourceFileName: "undertow.flac",
+    sourceSizeBytes: 41_800_000,
+    durationSec: 233,
+    stems: [],
+  },
+  completed("p_1010", "Cassette Dreams", "cassette-dreams.wav", 61_200_000, 184, 3 * DAY),
+  completed("p_1011", "City Lights", "city-lights.mp3", 9_100_000, 205, 4 * DAY),
+  {
+    id: "p_1012",
+    title: "Broken Radio",
+    status: "failed",
+    progress: 0,
+    createdAt: iso(4.5 * DAY),
+    updatedAt: iso(4.5 * DAY - 90 * 1000),
+    sourceFileName: "broken-radio.m4a",
+    sourceSizeBytes: 14_600_000,
+    durationSec: 0,
+    stems: [],
+    error: "Corrupted audio stream. Re-export and upload the file again.",
+  },
+  completed("p_1013", "Slow Burn", "slow-burn.wav", 78_500_000, 221, 6 * DAY),
+  completed("p_1014", "Northern Trail", "northern-trail.wav", 69_300_000, 176, 8 * DAY),
+  {
+    id: "p_1015",
+    title: "Afterglow",
+    status: "mastering",
+    progress: 88,
+    createdAt: iso(0.15 * DAY),
+    updatedAt: iso(3 * 60 * 1000),
+    sourceFileName: "afterglow.wav",
+    sourceSizeBytes: 55_400_000,
+    durationSec: 192,
+    stems: [],
+  },
+  completed("p_1016", "Ember", "ember.mp3", 8_800_000, 158, 9 * DAY),
+  completed("p_1017", "Glass Ocean", "glass-ocean.wav", 74_100_000, 214, 11 * DAY),
+  completed("p_1018", "Parallel Lines", "parallel-lines.flac", 47_900_000, 189, 13 * DAY),
+  completed("p_1019", "Ghost Notes", "ghost-notes.wav", 66_700_000, 172, 16 * DAY),
+  completed("p_1020", "Midnight Loop", "midnight-loop.mp3", 7_900_000, 163, 19 * DAY),
+  completed("p_1021", "Static Bloom", "static-bloom.wav", 71_600_000, 207, 23 * DAY),
+  completed("p_1022", "Low Tide", "low-tide.wav", 63_400_000, 181, 28 * DAY),
 ];
 
 export const INVOICES: Invoice[] = [

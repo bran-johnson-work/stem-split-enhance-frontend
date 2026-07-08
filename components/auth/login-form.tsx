@@ -21,11 +21,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { mockLogin } from "@/lib/auth/mock-auth";
+import { useAuth } from "@/lib/auth/auth-context";
 import { loginSchema, type LoginValues } from "@/lib/validations/auth";
 
 export function LoginForm() {
   const router = useRouter();
+  const { login } = useAuth();
   const [formError, setFormError] = React.useState<string | null>(null);
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -35,10 +36,22 @@ export function LoginForm() {
   async function onSubmit(values: LoginValues) {
     setFormError(null);
     try {
-      await mockLogin(values);
+      await login(values);
       toast.success("Welcome back!");
-      router.push("/dashboard");
+      // `next` (set by the proxy guard on protected routes) is only needed here,
+      // so read it at submit time — avoids useSearchParams de-opting the form to CSR.
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/") ? next : "/dashboard");
     } catch (err) {
+      // 403 = correct password but email not yet verified → send them to verify.
+      const status = (err as { status?: number })?.status;
+      if (status === 403) {
+        toast.error("Please verify your email address before logging in.");
+        router.push(
+          `/verify-email?email=${encodeURIComponent(values.email)}&unverified=1`,
+        );
+        return;
+      }
       const message =
         err instanceof Error ? err.message : "Something went wrong.";
       setFormError(message);

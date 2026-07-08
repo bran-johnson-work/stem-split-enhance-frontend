@@ -1,0 +1,133 @@
+// Real auth calls against Dakota's API, with a mock fallback so the app stays
+// usable when no backend is configured (USE_REAL_BACKEND === false). This is the
+// module that replaces lib/auth/mock-auth.ts for login/register/verify; the
+// forget/reset-password mocks stay there until a backend exists for them.
+//
+// Every function branches on USE_REAL_BACKEND so callers (and the AuthProvider)
+// never need to know which mode they're in.
+
+import { apiFetch } from "@/lib/api/fetch";
+import { ADMIN_EMAILS, USE_REAL_BACKEND, apiUrl } from "@/lib/config";
+import { CURRENT_USER } from "@/lib/mock/fixtures";
+import type { User } from "@/lib/types";
+import type { LoginValues, SignupValues } from "@/lib/validations/auth";
+
+/** Shape of the API's UserResponse (see docs/API doc.yaml). */
+interface UserResponse {
+  id: string;
+  email: string;
+  full_name?: string | null;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TokenResponse {
+  access_token: string;
+  token_type: string;
+}
+
+/** A synthetic token used in mock mode so the cookie/middleware flow still works. */
+export const MOCK_TOKEN = "mock-session";
+
+const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Map the backend UserResponse onto the app's richer `User`. The API has no
+ * role or subscription, so role is assigned from the admin allowlist and a
+ * default subscription is borrowed from the mock until billing exists.
+ */
+export function mapUser(u: UserResponse): User {
+  const role = ADMIN_EMAILS.includes(u.email.toLowerCase()) ? "admin" : "user";
+  return {
+    id: u.id,
+    name: u.full_name?.trim() || u.email.split("@")[0],
+    email: u.email,
+    role,
+    createdAt: u.created_at,
+    subscription: CURRENT_USER.subscription,
+  };
+}
+
+/** Log in and return the bearer token. Throws an Error (with `.status`) on failure. */
+export async function login(values: LoginValues): Promise<string> {
+  if (!USE_REAL_BACKEND) {
+    await delay();
+    if (values.email.toLowerCase() === "fail@klearnote.ai") {
+      throw new Error("Invalid email or password.");
+    }
+    return MOCK_TOKEN;
+  }
+  // OAuth2 password grant — form-encoded, `username` is the email.
+  const res = await apiFetch<TokenResponse>(apiUrl("/auth/login"), {
+    method: "POST",
+    anonymous: true,
+    form: { username: values.email, password: values.password },
+  });
+  return res.access_token;
+}
+
+/** Register a new account. In real mode the account starts unverified. */
+export async function register(values: SignupValues): Promise<void> {
+  if (!USE_REAL_BACKEND) {
+    await delay();
+    if (values.email.toLowerCase() === "taken@klearnote.ai") {
+      throw new Error("That email is already registered.");
+    }
+    return;
+  }
+  await apiFetch<UserResponse>(apiUrl("/auth/register"), {
+    method: "POST",
+    anonymous: true,
+    json: {
+      email: values.email,
+      password: values.password,
+      full_name: values.name,
+    },
+  });
+}
+
+/** Revoke the current token server-side (best-effort; the cookie is cleared regardless). */
+export async function logout(): Promise<void> {
+  if (!USE_REAL_BACKEND) return;
+  await apiFetch<unknown>(apiUrl("/auth/logout"), { method: "POST" }).catch(
+    () => {},
+  );
+}
+
+/** (Re)send a verification email. Always resolves (the API is deliberately generic). */
+export async function requestEmailVerification(email: string): Promise<void> {
+  if (!USE_REAL_BACKEND) {
+    await delay();
+    return;
+  }
+  await apiFetch<unknown>(apiUrl("/auth/verify-email/request"), {
+    method: "POST",
+    anonymous: true,
+    json: { email },
+  });
+}
+
+/** Confirm an email with the token from the verification link. Throws on invalid/expired. */
+export async function confirmEmailVerification(token: string): Promise<void> {
+  if (!USE_REAL_BACKEND) {
+    await delay();
+    return;
+  }
+  await apiFetch<unknown>(apiUrl("/auth/verify-email/confirm"), {
+    method: "POST",
+    anonymous: true,
+    json: { token },
+  });
+}
+
+/** The current authenticated user, mapped to the app's `User` shape. */
+export async function getCurrentUser(): Promise<User> {
+  if (!USE_REAL_BACKEND) {
+    await delay(150);
+    return structuredClone(CURRENT_USER);
+  }
+  const res = await apiFetch<UserResponse>(apiUrl("/users/me"));
+  return mapUser(res);
+}
