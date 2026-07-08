@@ -12,6 +12,7 @@ import type {
   Paginated,
   Plan,
   Project,
+  ProjectStatus,
   Subscription,
   User,
 } from "@/lib/types";
@@ -27,6 +28,8 @@ export interface KlearNoteApi {
     page?: number;
     pageSize?: number;
     search?: string;
+    /** Restrict to these statuses (e.g. the "processing" group). Omit = all. */
+    status?: ProjectStatus[];
   }): Promise<Paginated<Project>>;
   getProject(id: string): Promise<Project>;
   createProject(input: CreateProjectInput): Promise<Project>;
@@ -53,14 +56,22 @@ export class MockApi implements KlearNoteApi {
     page?: number;
     pageSize?: number;
     search?: string;
+    status?: ProjectStatus[];
   }) {
     await delay();
     const page = params?.page ?? 1;
     const pageSize = params?.pageSize ?? 10;
     const search = (params?.search ?? "").trim().toLowerCase();
-    const filtered = search
-      ? PROJECTS.filter((p) => p.title.toLowerCase().includes(search))
-      : PROJECTS;
+    const status = params?.status;
+    let filtered = PROJECTS;
+    if (status && status.length) {
+      filtered = filtered.filter((p) => status.includes(p.status));
+    }
+    if (search) {
+      filtered = filtered.filter((p) =>
+        p.title.toLowerCase().includes(search),
+      );
+    }
     const start = (page - 1) * pageSize;
     return {
       items: clone(filtered.slice(start, start + pageSize)),

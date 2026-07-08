@@ -5,14 +5,21 @@ import { api } from "@/lib/api";
 import { getCurrentUser } from "@/lib/api/auth";
 import { USE_REAL_BACKEND } from "@/lib/config";
 import { isTerminal } from "@/lib/processing/pipeline";
+import type { ProjectStatus } from "@/lib/types";
 
 /** Poll cadence for a live (non-terminal) project's status. */
 const PROJECT_POLL_MS = 4000;
 
+export interface ProjectsQuery {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: ProjectStatus[];
+}
+
 export const queryKeys = {
   currentUser: ["current-user"] as const,
-  projects: (params?: { page?: number; search?: string }) =>
-    ["projects", params ?? {}] as const,
+  projects: (params?: ProjectsQuery) => ["projects", params ?? {}] as const,
   project: (id: string) => ["project", id] as const,
   plans: ["plans"] as const,
   subscription: ["subscription"] as const,
@@ -30,7 +37,7 @@ export function useCurrentUser() {
   });
 }
 
-export function useProjects(params?: { page?: number; search?: string }) {
+export function useProjects(params?: ProjectsQuery) {
   return useQuery({
     queryKey: queryKeys.projects(params),
     queryFn: () => api.listProjects(params),

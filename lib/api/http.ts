@@ -15,6 +15,7 @@ import type {
   Paginated,
   Plan,
   Project,
+  ProjectStatus,
   Subscription,
   User,
 } from "@/lib/types";
@@ -34,15 +35,24 @@ export class HttpApi implements KlearNoteApi {
     page?: number;
     pageSize?: number;
     search?: string;
+    status?: ProjectStatus[];
   }): Promise<Paginated<Project>> {
     const page = params?.page ?? 1;
     const pageSize = params?.pageSize ?? 10;
     const search = (params?.search ?? "").trim().toLowerCase();
+    const status = params?.status;
 
+    // The API has no search/status params, so we fetch a window and filter +
+    // page-slice client-side — same discipline as the mock, keeping `total`
+    // and pagination correct across the filtered set.
     const all = await projectsApi.listProjects(0, LIST_WINDOW);
-    const filtered = search
-      ? all.filter((p) => p.title.toLowerCase().includes(search))
-      : all;
+    let filtered = all;
+    if (status && status.length) {
+      filtered = filtered.filter((p) => status.includes(p.status));
+    }
+    if (search) {
+      filtered = filtered.filter((p) => p.title.toLowerCase().includes(search));
+    }
     const start = (page - 1) * pageSize;
     return {
       items: filtered.slice(start, start + pageSize),
