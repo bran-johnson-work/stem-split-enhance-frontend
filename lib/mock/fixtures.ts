@@ -239,6 +239,20 @@ export const PROJECTS: Project[] = [
   completed("p_1020", "Midnight Loop", "midnight-loop.mp3", 7_900_000, 163, 19 * DAY),
   completed("p_1021", "Static Bloom", "static-bloom.wav", 71_600_000, 207, 23 * DAY),
   completed("p_1022", "Low Tide", "low-tide.wav", 63_400_000, 181, 28 * DAY),
+  // Completed, but nothing was produced — exercises the delivery empty state
+  // (KN-43), which is also what the real backend returns today (no stems yet).
+  {
+    id: "p_1023",
+    title: "Field Recording",
+    status: "completed",
+    progress: 100,
+    createdAt: iso(31 * DAY),
+    updatedAt: iso(31 * DAY - 4 * 60 * 1000),
+    sourceFileName: "field-recording.wav",
+    sourceSizeBytes: 22_500_000,
+    durationSec: 96,
+    stems: [],
+  },
 ];
 
 export const INVOICES: Invoice[] = [

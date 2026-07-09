@@ -1,20 +1,33 @@
 "use client";
 
-// Orchestrates the Day-8 processing pipeline for a single project. It owns only
-// the live status (via useProcessingStatus) and composes the three tickets:
+// Orchestrates the project detail route for a single project. It owns only the
+// live status (via useProcessingStatus) and composes:
 //   • KN-24 ProcessingStepper   — the 7-state stepper
 //   • KN-25 ProcessingWaveform  — animated waveform + per-stage progress
 //   • KN-26 ProcessingError     — failed reason + retry
+//   • KN-43 DeliveryPanel       — stems + master downloads, once completed
 // Every child depends solely on `{ status, progress }`, so swapping the mock
 // simulator for a real poll/socket is invisible here.
+//
+// The route has two faces. While work is in flight the waveform leads and the
+// stepper is the main event. Once the pipeline completes, downloads take that
+// hero slot — the animated waveform is a *processing* affordance with nothing
+// left to say — and the stepper collapses into a record of what ran.
 
 import Link from "next/link";
-import { ArrowLeft, CircleCheckBig } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { DeliveryPanel } from "@/components/delivery/delivery-panel";
 import { ProcessingError } from "@/components/processing/processing-error";
 import { ProcessingStepper } from "@/components/processing/processing-stepper";
 import { ProcessingWaveform } from "@/components/processing/processing-waveform";
 import { StatusBadge } from "@/components/projects/status-badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,6 +42,7 @@ import type { Project } from "@/lib/types";
 export function ProcessingView({ project }: { project: Project }) {
   const { status, progress, stageProgress, isRunning, isSimulated, retry } =
     useProcessingStatus(project);
+  const completed = status === "completed";
 
   const handleRetry = () => {
     retry();
@@ -69,56 +83,53 @@ export function ProcessingView({ project }: { project: Project }) {
         <ProcessingError reason={project.error} onRetry={handleRetry} />
       ) : (
         <>
-          <ProcessingWaveform
-            status={status}
-            progress={progress}
-            running={isRunning}
-          />
+          {completed ? (
+            <DeliveryPanel project={project} />
+          ) : (
+            <ProcessingWaveform
+              status={status}
+              progress={progress}
+              running={isRunning}
+            />
+          )}
 
-          {status === "completed" && <CompletedPanel project={project} />}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {status === "completed"
-                  ? "Pipeline complete"
-                  : "Processing pipeline"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ProcessingStepper current={status} stageProgress={stageProgress} />
-            </CardContent>
-          </Card>
+          {completed ? (
+            <Card className="py-0">
+              <Accordion type="single" collapsible>
+                <AccordionItem value="pipeline">
+                  <AccordionTrigger className="px-6 hover:no-underline">
+                    Pipeline complete
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <ProcessingStepper
+                      current={status}
+                      stageProgress={stageProgress}
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Processing pipeline</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProcessingStepper
+                  current={status}
+                  stageProgress={stageProgress}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           <p className="text-muted-foreground text-center text-xs">
-            Updated {formatRelative(project.updatedAt)} · status refreshes
-            automatically
+            {completed
+              ? `Completed ${formatRelative(project.updatedAt)}`
+              : `Updated ${formatRelative(project.updatedAt)} · status refreshes automatically`}
           </p>
         </>
       )}
-    </div>
-  );
-}
-
-// Completed confirmation. The full stem-list + audio-player download experience
-// lands on this same route in Day 10 (KN-29/KN-30); until then we confirm what's
-// ready without fabricating a link to an unbuilt view.
-function CompletedPanel({ project }: { project: Project }) {
-  const stemCount = project.stems.length;
-  return (
-    <div className="border-completed/30 bg-completed/5 flex items-start gap-3 rounded-xl border p-6">
-      <div className="bg-completed/15 text-completed grid size-11 shrink-0 place-items-center rounded-lg">
-        <CircleCheckBig className="size-6" />
-      </div>
-      <div className="min-w-0">
-        <p className="font-medium">Your track is ready</p>
-        <p className="text-muted-foreground text-sm">
-          {stemCount > 0
-            ? `${stemCount} stems + an enhanced master have been processed.`
-            : "Your stems and enhanced master have been processed."}{" "}
-          The download &amp; player view arrives in the next release.
-        </p>
-      </div>
     </div>
   );
 }
