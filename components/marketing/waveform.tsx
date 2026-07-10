@@ -1,3 +1,4 @@
+import { waveform } from "@/lib/audio/peaks";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,20 +10,10 @@ import { cn } from "@/lib/utils";
  * deterministic so SSR and the client render identical markup. Motion
  * (optional) reuses the global `animate-eq` utility and freezes under
  * `prefers-reduced-motion`.
+ *
+ * The amplitude curve lives in lib/audio/peaks.ts, where the KN-44 player also
+ * draws on it to render a lane without decoding audio.
  */
-
-/** Deterministic pseudo-waveform amplitudes in [0, 1]. */
-export function waveform(count: number, seed = 1): number[] {
-  return Array.from({ length: count }, (_, i) => {
-    const t = i / count;
-    const v =
-      0.5 +
-      0.3 * Math.sin(t * Math.PI * 6 + seed) +
-      0.22 * Math.sin(t * Math.PI * 14 + seed * 1.7) +
-      0.16 * Math.sin(t * Math.PI * 29 + seed * 2.5);
-    return Math.min(1, Math.max(0.06, v));
-  });
-}
 
 export function Waveform({
   count = 64,

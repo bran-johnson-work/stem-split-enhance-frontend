@@ -14,6 +14,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from "lucide-react";
+import { formatBytes, formatDuration } from "@/lib/format";
 import type { Project, Stem, StemKind } from "@/lib/types";
 
 export interface StemMeta {
@@ -86,10 +87,37 @@ export function masterDeliverable(project: Project): Stem | null {
  * it does, that entry wins and we don't synthesize a duplicate.
  */
 export function deliverables(project: Project): Stem[] {
+  const { master, stems } = splitDeliverables(project);
+  return master ? [master, ...stems] : stems;
+}
+
+/**
+ * The same set, split by role. The KN-44 player needs these apart, not flattened:
+ * the stems share one synced transport, while the master is an exclusive
+ * reference player (playing it against the stem bus would double the mix).
+ */
+export function splitDeliverables(project: Project): {
+  master: Stem | null;
+  stems: Stem[];
+} {
   const explicitMaster = project.stems.find((s) => s.kind === "master");
-  const tracks = project.stems.filter((s) => s.kind !== "master");
-  const master = explicitMaster ?? masterDeliverable(project);
-  return master ? [master, ...tracks] : tracks;
+  return {
+    master: explicitMaster ?? masterDeliverable(project),
+    stems: project.stems.filter((s) => s.kind !== "master"),
+  };
+}
+
+/**
+ * The `WAV · 28 MB · 3:32` metadata line, also folded into the download button's
+ * accessible name. The master carries no size from the API, so that part is
+ * omitted rather than rendered as "0 B".
+ */
+export function stemDetails(stem: Stem): string[] {
+  return [
+    fileExtension(stem.url).toUpperCase(),
+    stem.sizeBytes ? formatBytes(stem.sizeBytes) : null,
+    stem.durationSec ? formatDuration(stem.durationSec) : null,
+  ].filter((part): part is string => part !== null);
 }
 
 const EXTENSION = /\.([a-z0-9]{1,5})(?:\?.*)?$/i;
