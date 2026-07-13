@@ -7,6 +7,7 @@ import {
 } from "@/lib/mock/fixtures";
 import type {
   AdminUserRow,
+  ChangePasswordInput,
   CreateProjectInput,
   Invoice,
   Paginated,
@@ -14,6 +15,7 @@ import type {
   Project,
   ProjectStatus,
   Subscription,
+  UpdateProfileInput,
   User,
 } from "@/lib/types";
 
@@ -24,6 +26,9 @@ import type {
  */
 export interface KlearNoteApi {
   getCurrentUser(): Promise<User>;
+  updateProfile(input: UpdateProfileInput): Promise<User>;
+  changePassword(input: ChangePasswordInput): Promise<void>;
+  deleteAccount(): Promise<void>;
   listProjects(params?: {
     page?: number;
     pageSize?: number;
@@ -50,6 +55,32 @@ export class MockApi implements KlearNoteApi {
   async getCurrentUser() {
     await delay(200);
     return clone(CURRENT_USER);
+  }
+
+  async updateProfile(input: UpdateProfileInput) {
+    await delay(400);
+    // Mutate the fixture in place so the change survives client navigations —
+    // same discipline as createProject below (resets on a full reload).
+    if (input.name !== undefined) CURRENT_USER.name = input.name;
+    if (input.email !== undefined) CURRENT_USER.email = input.email;
+    if (input.avatarUrl !== undefined) {
+      if (input.avatarUrl === null) delete CURRENT_USER.avatarUrl;
+      else CURRENT_USER.avatarUrl = input.avatarUrl;
+    }
+    return clone(CURRENT_USER);
+  }
+
+  async changePassword(input: ChangePasswordInput) {
+    await delay(600);
+    // Demo hook for the error state, same convention as the fail@/taken@
+    // addresses in lib/api/auth.
+    if (input.currentPassword === "wrongpassword") {
+      throw new Error("Current password is incorrect.");
+    }
+  }
+
+  async deleteAccount() {
+    await delay(600);
   }
 
   async listProjects(params?: {

@@ -7,13 +7,14 @@
 // never need to know which mode they're in.
 
 import { apiFetch } from "@/lib/api/fetch";
+import { readStoredAvatar } from "@/lib/avatar/avatar-store";
 import { ADMIN_EMAILS, USE_REAL_BACKEND, apiUrl } from "@/lib/config";
 import { CURRENT_USER } from "@/lib/mock/fixtures";
 import type { User } from "@/lib/types";
 import type { LoginValues, SignupValues } from "@/lib/validations/auth";
 
 /** Shape of the API's UserResponse (see docs/API doc.yaml). */
-interface UserResponse {
+export interface UserResponse {
   id: string;
   email: string;
   full_name?: string | null;
@@ -122,12 +123,23 @@ export async function confirmEmailVerification(token: string): Promise<void> {
   });
 }
 
+/**
+ * DEFERRED: neither the API's UserResponse nor the mock fixture carries an
+ * avatar, so the image the user picked (kept on the device by the AvatarStore
+ * seam) is overlaid here — without this it would vanish on the next refetch.
+ * Delete alongside `localAvatarStore` when the avatar endpoint lands.
+ */
+function withStoredAvatar(user: User): User {
+  const stored = readStoredAvatar();
+  return stored ? { ...user, avatarUrl: stored } : user;
+}
+
 /** The current authenticated user, mapped to the app's `User` shape. */
 export async function getCurrentUser(): Promise<User> {
   if (!USE_REAL_BACKEND) {
     await delay(150);
-    return structuredClone(CURRENT_USER);
+    return withStoredAvatar(structuredClone(CURRENT_USER));
   }
   const res = await apiFetch<UserResponse>(apiUrl("/users/me"));
-  return mapUser(res);
+  return withStoredAvatar(mapUser(res));
 }

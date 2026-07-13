@@ -1,11 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getCurrentUser } from "@/lib/api/auth";
 import { USE_REAL_BACKEND } from "@/lib/config";
 import { isTerminal } from "@/lib/processing/pipeline";
-import type { ProjectStatus } from "@/lib/types";
+import type {
+  ChangePasswordInput,
+  ProjectStatus,
+  UpdateProfileInput,
+} from "@/lib/types";
 
 /** Poll cadence for a live (non-terminal) project's status. */
 const PROJECT_POLL_MS = 4000;
@@ -35,6 +39,31 @@ export function useCurrentUser() {
     queryKey: queryKeys.currentUser,
     queryFn: () => getCurrentUser(),
   });
+}
+
+/**
+ * Account mutations. Each runs through the API seam, so they hit the real
+ * PATCH/DELETE /users/{id} when a backend is configured and are simulated
+ * otherwise. Toasts stay with the forms — these just keep the cache honest.
+ */
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateProfileInput) => api.updateProfile(input),
+    // Seed the cache with the updated user so the sidebar user menu picks up a
+    // new name/avatar immediately, without a refetch.
+    onSuccess: (user) => queryClient.setQueryData(queryKeys.currentUser, user),
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: ChangePasswordInput) => api.changePassword(input),
+  });
+}
+
+export function useDeleteAccount() {
+  return useMutation({ mutationFn: () => api.deleteAccount() });
 }
 
 export function useProjects(params?: ProjectsQuery) {

@@ -6,6 +6,18 @@ export function formatBytes(bytes: number, decimals = 1): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${units[i]}`;
 }
 
+/** Up to two initials for an avatar fallback, e.g. "Alfie Martin" → "AM". */
+export function initials(name?: string): string {
+  if (!name?.trim()) return "?";
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
 export function formatDuration(totalSeconds: number): string {
   if (!totalSeconds) return "0:00";
   const m = Math.floor(totalSeconds / 60);

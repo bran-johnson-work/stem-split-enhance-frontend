@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const password = z
+// The one definition of what a valid password is — reused by signup, reset and
+// the account change-password form (lib/validations/account.ts).
+export const password = z
   .string()
   .min(8, "At least 8 characters")
   .regex(/[A-Z]/, "Add an uppercase letter")

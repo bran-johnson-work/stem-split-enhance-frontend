@@ -105,6 +105,27 @@ export interface User {
   subscription: Subscription;
 }
 
+// Partial profile update. Only the fields present are changed — mirrors the
+// backend's `UserUpdate` (PATCH /users/{id}). `avatarUrl: null` clears the avatar.
+export interface UpdateProfileInput {
+  name?: string;
+  email?: string;
+  avatarUrl?: string | null;
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+// Email notification opt-ins. No backend yet — persisted client-side by
+// lib/preferences/preferences-store.
+export interface NotificationPrefs {
+  processingComplete: boolean;
+  processingFailed: boolean;
+  productUpdates: boolean;
+}
+
 export interface AdminUserRow {
   id: string;
   name: string;

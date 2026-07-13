@@ -15,17 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth/auth-context";
+import { initials } from "@/lib/format";
 import { useCurrentUser } from "@/lib/hooks/queries";
-
-function initials(name?: string) {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((p) => p[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 export function UserMenu() {
   const { data: user } = useCurrentUser();
