@@ -1,6 +1,7 @@
 import type {
   AdminUserRow,
   Invoice,
+  PaymentMethod,
   Plan,
   Project,
   Stem,
@@ -51,6 +52,10 @@ function completed(
   };
 }
 
+// Annual is priced at 10× the monthly rate across every paid tier — two months
+// free, which is what the pricing FAQ promises. The "Save ~17%" badge and the
+// effective-monthly figures on the plan cards are derived from these two numbers,
+// so this is the only place a price lives.
 export const PLANS: Plan[] = [
   {
     id: "free",
@@ -64,17 +69,23 @@ export const PLANS: Plan[] = [
   {
     id: "creator",
     name: "Creator",
-    priceMonthly: 12,
-    priceAnnual: 120,
+    priceMonthly: 39,
+    priceAnnual: 390,
     description: "For hobbyists and growing creators.",
-    features: ["50 uploads / mo", "HQ stems", "WAV downloads", "Enhanced master"],
+    features: [
+      "50 uploads / mo",
+      "HQ stem separation",
+      "WAV + MP3 downloads",
+      "Enhanced mastering",
+      "Email support",
+    ],
     uploadsPerMonth: 50,
   },
   {
     id: "pro",
     name: "Pro",
-    priceMonthly: 29,
-    priceAnnual: 290,
+    priceMonthly: 79,
+    priceAnnual: 790,
     description: "For professionals who ship constantly.",
     features: [
       "Unlimited uploads",
@@ -88,8 +99,8 @@ export const PLANS: Plan[] = [
   {
     id: "studio",
     name: "Studio",
-    priceMonthly: 79,
-    priceAnnual: 790,
+    priceMonthly: 129,
+    priceAnnual: 1290,
     description: "For teams and studios at scale.",
     features: [
       "Everything in Pro",
@@ -110,7 +121,8 @@ export const CURRENT_USER: User = {
   subscription: {
     planId: "pro",
     status: "active",
-    renewsAt: iso(-18 * DAY),
+    cycle: "monthly",
+    renewsAt: iso(-18 * DAY), // 18 days from now
   },
 };
 
@@ -255,11 +267,32 @@ export const PROJECTS: Project[] = [
   },
 ];
 
-export const INVOICES: Invoice[] = [
-  { id: "in_9001", date: iso(12 * DAY), amount: 29, status: "paid", url: "#" },
-  { id: "in_9000", date: iso(42 * DAY), amount: 29, status: "paid", url: "#" },
-  { id: "in_8999", date: iso(72 * DAY), amount: 29, status: "paid", url: "#" },
-];
+// Six months of history on the fixture user's plan (Pro, monthly). MockApi
+// prepends to this list when a plan change bills immediately, so the table isn't
+// static once you use the screen.
+export const INVOICES: Invoice[] = Array.from({ length: 6 }, (_, i) => ({
+  id: `in_${9006 - i}`,
+  date: iso((12 + i * 30) * DAY),
+  amount: 79,
+  status: "paid" as const,
+  description: "Pro — monthly",
+  url: "#",
+}));
+
+/**
+ * Billing state MockApi mutates in place (a card can be added, replaced and
+ * removed). Wrapped in an object because an exported `let` can't be reassigned
+ * across module boundaries. Resets on a full page reload, like PROJECTS.
+ */
+export const BILLING_STATE: { paymentMethod: PaymentMethod | null } = {
+  paymentMethod: {
+    id: "pm_4242",
+    brand: "visa",
+    last4: "4242",
+    expMonth: 8,
+    expYear: 2028,
+  },
+};
 
 export const ADMIN_USERS: AdminUserRow[] = [
   {

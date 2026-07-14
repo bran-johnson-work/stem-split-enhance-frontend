@@ -25,6 +25,28 @@ export function formatDuration(totalSeconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+/**
+ * Money, in whole dollars (`79` → "$79", `12.5` → "$12.50"). Amounts are stored
+ * as major units throughout — a real Stripe integration deals in minor units, and
+ * this is the one place that conversion would land.
+ */
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  }).format(amount);
+}
+
+/** An absolute date, e.g. "Aug 1, 2026". */
+export function formatDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
 export function formatRelative(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.round(diff / 60000);

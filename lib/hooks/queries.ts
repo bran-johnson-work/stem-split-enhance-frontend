@@ -6,8 +6,11 @@ import { getCurrentUser } from "@/lib/api/auth";
 import { USE_REAL_BACKEND } from "@/lib/config";
 import { isTerminal } from "@/lib/processing/pipeline";
 import type {
+  CardToken,
   ChangePasswordInput,
+  ChangePlanInput,
   ProjectStatus,
+  Subscription,
   UpdateProfileInput,
 } from "@/lib/types";
 
@@ -28,6 +31,7 @@ export const queryKeys = {
   plans: ["plans"] as const,
   subscription: ["subscription"] as const,
   invoices: ["invoices"] as const,
+  paymentMethod: ["payment-method"] as const,
   adminUsers: ["admin", "users"] as const,
   adminProjects: ["admin", "projects"] as const,
 };
@@ -107,6 +111,65 @@ export function useInvoices() {
   return useQuery({
     queryKey: queryKeys.invoices,
     queryFn: () => api.listInvoices(),
+  });
+}
+
+export function usePaymentMethod() {
+  return useQuery({
+    queryKey: queryKeys.paymentMethod,
+    queryFn: () => api.getPaymentMethod(),
+  });
+}
+
+/**
+ * Billing mutations (KN-46). Every one of them lands the fresh subscription in
+ * the cache and then invalidates the current user, because `User` *embeds* its
+ * subscription — without that the sidebar and user menu keep showing the old
+ * plan. Upgrades also bill immediately, so invoices are refetched too.
+ */
+function useSubscriptionMutation<TInput = void>(
+  mutationFn: (input: TInput) => Promise<Subscription>,
+) {
+  const queryClient = useQueryClient();
+  return useMutation<Subscription, Error, TInput>({
+    mutationFn,
+    onSuccess: (subscription) => {
+      queryClient.setQueryData(queryKeys.subscription, subscription);
+      queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
+      queryClient.invalidateQueries({ queryKey: queryKeys.invoices });
+    },
+  });
+}
+
+export function useChangePlan() {
+  return useSubscriptionMutation((input: ChangePlanInput) =>
+    api.changePlan(input),
+  );
+}
+
+export function useCancelSubscription() {
+  return useSubscriptionMutation<void>(() => api.cancelSubscription());
+}
+
+/** Undoes a scheduled cancellation *or* a scheduled downgrade. */
+export function useResumeSubscription() {
+  return useSubscriptionMutation<void>(() => api.resumeSubscription());
+}
+
+export function useSavePaymentMethod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (token: CardToken) => api.attachPaymentMethod(token),
+    onSuccess: (method) =>
+      queryClient.setQueryData(queryKeys.paymentMethod, method),
+  });
+}
+
+export function useRemovePaymentMethod() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.removePaymentMethod(),
+    onSuccess: () => queryClient.setQueryData(queryKeys.paymentMethod, null),
   });
 }
 

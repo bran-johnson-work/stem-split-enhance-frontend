@@ -1,5 +1,7 @@
+import { planChange, priceFor } from "@/lib/billing/plans";
 import {
   ADMIN_USERS,
+  BILLING_STATE,
   CURRENT_USER,
   INVOICES,
   PLANS,
@@ -7,10 +9,13 @@ import {
 } from "@/lib/mock/fixtures";
 import type {
   AdminUserRow,
+  CardToken,
   ChangePasswordInput,
+  ChangePlanInput,
   CreateProjectInput,
   Invoice,
   Paginated,
+  PaymentMethod,
   Plan,
   Project,
   ProjectStatus,
@@ -40,12 +45,27 @@ export interface KlearNoteApi {
   createProject(input: CreateProjectInput): Promise<Project>;
   getPlans(): Promise<Plan[]>;
   getSubscription(): Promise<Subscription>;
+  /**
+   * Switch plan and/or billing cycle. Upgrades bill immediately; downgrades are
+   * scheduled for the end of the period the user has already paid for.
+   */
+  changePlan(input: ChangePlanInput): Promise<Subscription>;
+  /** Schedule a cancellation for the end of the current period. */
+  cancelSubscription(): Promise<Subscription>;
+  /** Undo a scheduled cancellation or downgrade. */
+  resumeSubscription(): Promise<Subscription>;
   listInvoices(): Promise<Invoice[]>;
+  /** The card on file, or `null` when there isn't one. */
+  getPaymentMethod(): Promise<PaymentMethod | null>;
+  /** Attach a card collected by the BillingGateway (lib/billing), replacing any existing one. */
+  attachPaymentMethod(token: CardToken): Promise<PaymentMethod>;
+  removePaymentMethod(): Promise<void>;
   adminListUsers(): Promise<AdminUserRow[]>;
   adminListProjects(): Promise<Project[]>;
 }
 
 const delay = (ms = 350) => new Promise((r) => setTimeout(r, ms));
+const DAY = 24 * 60 * 60 * 1000;
 const clone = <T>(v: T): T =>
   typeof structuredClone === "function"
     ? structuredClone(v)
@@ -154,9 +174,91 @@ export class MockApi implements KlearNoteApi {
     return clone(CURRENT_USER.subscription);
   }
 
+  async changePlan({ planId, cycle }: ChangePlanInput) {
+    await delay(700);
+    const sub = CURRENT_USER.subscription;
+    const plan = PLANS.find((p) => p.id === planId);
+    if (!plan) throw new Error("That plan doesn't exist.");
+    if (planId !== "free" && !BILLING_STATE.paymentMethod) {
+      throw new Error("Add a payment method before changing your plan.");
+    }
+
+    const change = planChange(sub, { planId, cycle });
+    if (change === "none") return clone(sub);
+
+    if (change === "downgrade") {
+      // Park it — the user keeps what they paid for until the period ends.
+      sub.scheduledChange = { planId, cycle };
+      return clone(sub);
+    }
+
+    // An upgrade bills today, so the period restarts and an invoice lands now.
+    sub.planId = planId;
+    sub.cycle = cycle;
+    sub.status = "active";
+    sub.renewsAt = new Date(
+      Date.now() + (cycle === "annual" ? 365 : 30) * DAY,
+    ).toISOString();
+    delete sub.scheduledChange;
+    delete sub.cancelAtPeriodEnd;
+    delete sub.trialEndsAt;
+
+    INVOICES.unshift({
+      id: `in_${Date.now().toString(36)}`,
+      date: new Date().toISOString(),
+      amount: priceFor(plan, cycle),
+      status: "paid",
+      description: `${plan.name} — ${cycle}`,
+      url: "#",
+    });
+    return clone(sub);
+  }
+
+  async cancelSubscription() {
+    await delay(600);
+    const sub = CURRENT_USER.subscription;
+    sub.cancelAtPeriodEnd = true;
+    // A pending downgrade is moot once the whole subscription is ending.
+    delete sub.scheduledChange;
+    return clone(sub);
+  }
+
+  async resumeSubscription() {
+    await delay(500);
+    const sub = CURRENT_USER.subscription;
+    delete sub.cancelAtPeriodEnd;
+    delete sub.scheduledChange;
+    return clone(sub);
+  }
+
   async listInvoices() {
     await delay(200);
     return clone(INVOICES);
+  }
+
+  async getPaymentMethod() {
+    await delay(200);
+    return clone(BILLING_STATE.paymentMethod);
+  }
+
+  async attachPaymentMethod(token: CardToken) {
+    await delay(400);
+    // A real gateway would hand the token to the API and the card metadata would
+    // come back from the customer record; here the token carries it.
+    const method: PaymentMethod = {
+      id: token.token,
+      brand: token.brand,
+      last4: token.last4,
+      expMonth: token.expMonth,
+      expYear: token.expYear,
+    };
+    BILLING_STATE.paymentMethod = method;
+    return clone(method);
+  }
+
+  async removePaymentMethod() {
+    await delay(400);
+    BILLING_STATE.paymentMethod = null;
   }
 
   async adminListUsers() {

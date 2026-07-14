@@ -11,10 +11,13 @@ import * as projectsApi from "@/lib/api/projects";
 import * as usersApi from "@/lib/api/users";
 import type {
   AdminUserRow,
+  CardToken,
   ChangePasswordInput,
+  ChangePlanInput,
   CreateProjectInput,
   Invoice,
   Paginated,
+  PaymentMethod,
   Plan,
   Project,
   ProjectStatus,
@@ -121,14 +124,36 @@ export class HttpApi implements KlearNoteApi {
   }
 
   // ---- No backend yet — delegate to the mock -----------------------------
+  // Billing has no endpoints at all (no plans, subscription, invoices or
+  // payment methods in the API spec) and no live Stripe keys, so the whole
+  // surface runs on MockApi. Card *collection* is a separate concern — see the
+  // BillingGateway seam in lib/billing/billing-gateway.ts.
   getPlans(): Promise<Plan[]> {
     return this.mock.getPlans();
   }
   getSubscription(): Promise<Subscription> {
     return this.mock.getSubscription();
   }
+  changePlan(input: ChangePlanInput): Promise<Subscription> {
+    return this.mock.changePlan(input);
+  }
+  cancelSubscription(): Promise<Subscription> {
+    return this.mock.cancelSubscription();
+  }
+  resumeSubscription(): Promise<Subscription> {
+    return this.mock.resumeSubscription();
+  }
   listInvoices(): Promise<Invoice[]> {
     return this.mock.listInvoices();
+  }
+  getPaymentMethod(): Promise<PaymentMethod | null> {
+    return this.mock.getPaymentMethod();
+  }
+  attachPaymentMethod(token: CardToken): Promise<PaymentMethod> {
+    return this.mock.attachPaymentMethod(token);
+  }
+  removePaymentMethod(): Promise<void> {
+    return this.mock.removePaymentMethod();
   }
   adminListUsers(): Promise<AdminUserRow[]> {
     return this.mock.adminListUsers();
