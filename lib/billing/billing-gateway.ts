@@ -43,8 +43,8 @@ const SIM_MS = 900;
 
 /**
  * Stripe's canonical "card declined" test number. Kept as the error-state lever
- * for this screen, the same convention as `fail@klearnote.ai` (login) and
- * `wrongpassword` (change password).
+ * for this screen, the same convention as `wrongpassword` (change password) and
+ * `taken@klearnote.ai` (signup).
  */
 export const DECLINE_TEST_CARD = "4000000000000002";
 

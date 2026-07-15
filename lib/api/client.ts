@@ -141,6 +141,27 @@ export class MockApi implements KlearNoteApi {
 
   async createProject(input: CreateProjectInput) {
     await delay(300);
+
+    // Server-side cap, matching the real backend's 400 "Monthly project limit
+    // reached (N)". This is the backstop behind the client upload gate
+    // (lib/billing/entitlements.uploadGate) — it catches an over-limit upload
+    // even if usage tips over mid-session, counted the same way as
+    // lib/hooks/use-monthly-usage.
+    const plan = PLANS.find((p) => p.id === CURRENT_USER.subscription.planId);
+    if (plan && plan.uploadsPerMonth !== "unlimited") {
+      const now = new Date();
+      const usedThisMonth = PROJECTS.filter((p) => {
+        const created = new Date(p.createdAt);
+        return (
+          created.getMonth() === now.getMonth() &&
+          created.getFullYear() === now.getFullYear()
+        );
+      }).length;
+      if (usedThisMonth >= plan.uploadsPerMonth) {
+        throw new Error(`Monthly project limit reached (${plan.uploadsPerMonth}).`);
+      }
+    }
+
     const nowIso = new Date().toISOString();
     const title =
       input.title?.trim() ||

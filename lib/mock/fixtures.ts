@@ -115,7 +115,7 @@ export const PLANS: Plan[] = [
 export const CURRENT_USER: User = {
   id: "u_1",
   name: "Alfie Martin",
-  email: "alfie@klearnote.ai",
+  email: "amart@klearnote.ai",
   role: "admin",
   createdAt: iso(120 * DAY),
   subscription: {
@@ -298,7 +298,7 @@ export const ADMIN_USERS: AdminUserRow[] = [
   {
     id: "u_1",
     name: "Alfie Martin",
-    email: "alfie@klearnote.ai",
+    email: "amart@klearnote.ai",
     role: "admin",
     planId: "pro",
     projectCount: 12,

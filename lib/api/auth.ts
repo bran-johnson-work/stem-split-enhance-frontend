@@ -32,6 +32,14 @@ interface TokenResponse {
 /** A synthetic token used in mock mode so the cookie/middleware flow still works. */
 export const MOCK_TOKEN = "mock-session";
 
+/**
+ * The sole password accepted in mock mode (no backend). Paired with the seeded
+ * user's email (`CURRENT_USER.email`), it's the one dev credential the app
+ * recognises, so the mock session maps to a real identity instead of letting
+ * any email through. Not a secret — there is no backend and it resets on reload.
+ */
+export const DEV_PASSWORD = "123!@#qweQWE";
+
 const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -55,9 +63,10 @@ export function mapUser(u: UserResponse): User {
 export async function login(values: LoginValues): Promise<string> {
   if (!USE_REAL_BACKEND) {
     await delay();
-    if (values.email.toLowerCase() === "fail@klearnote.ai") {
-      throw new Error("Invalid email or password.");
-    }
+    const ok =
+      values.email.trim().toLowerCase() === CURRENT_USER.email.toLowerCase() &&
+      values.password === DEV_PASSWORD;
+    if (!ok) throw new Error("Invalid email or password.");
     return MOCK_TOKEN;
   }
   // OAuth2 password grant — form-encoded, `username` is the email.
