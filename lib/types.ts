@@ -78,11 +78,57 @@ export interface Plan {
   uploadsPerMonth: number | "unlimited";
 }
 
+export type BillingCycle = "monthly" | "annual";
+
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled";
+
 export interface Subscription {
   planId: PlanId;
-  status: "trialing" | "active" | "past_due" | "canceled";
+  status: SubscriptionStatus;
+  cycle: BillingCycle;
   renewsAt: string;
   trialEndsAt?: string;
+  /** Cancelled, but still active until `renewsAt` — "cancel anytime" keeps the
+   *  period you paid for. Undone by `resumeSubscription`. */
+  cancelAtPeriodEnd?: boolean;
+  /** A downgrade doesn't take effect until the period ends, so the plan the user
+   *  picked is parked here while `planId` stays what they're paying for today. */
+  scheduledChange?: { planId: PlanId; cycle: BillingCycle };
+}
+
+/** What the user is switching to. */
+export interface ChangePlanInput {
+  planId: PlanId;
+  cycle: BillingCycle;
+}
+
+export type CardBrand = "visa" | "mastercard" | "amex" | "unknown";
+
+export interface PaymentMethod {
+  id: string;
+  brand: CardBrand;
+  last4: string;
+  expMonth: number; // 1..12
+  expYear: number; // 4-digit
+}
+
+/**
+ * A collected card, produced by the `BillingGateway` (lib/billing) and handed to
+ * `attachPaymentMethod`. Stands in for a Stripe PaymentMethod id: with a real
+ * gateway only `token` would cross the wire and the card metadata would come
+ * back from the API — the display fields ride along because nothing else knows
+ * them while the gateway is simulated.
+ */
+export interface CardToken {
+  token: string;
+  brand: CardBrand;
+  last4: string;
+  expMonth: number;
+  expYear: number;
 }
 
 export interface Invoice {
@@ -91,6 +137,8 @@ export interface Invoice {
   amount: number;
   status: "paid" | "open" | "failed";
   url: string;
+  /** What was billed, e.g. "Pro — monthly". */
+  description?: string;
 }
 
 export type UserRole = "user" | "admin";
@@ -103,6 +151,27 @@ export interface User {
   role: UserRole;
   createdAt: string;
   subscription: Subscription;
+}
+
+// Partial profile update. Only the fields present are changed — mirrors the
+// backend's `UserUpdate` (PATCH /users/{id}). `avatarUrl: null` clears the avatar.
+export interface UpdateProfileInput {
+  name?: string;
+  email?: string;
+  avatarUrl?: string | null;
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+// Email notification opt-ins. No backend yet — persisted client-side by
+// lib/preferences/preferences-store.
+export interface NotificationPrefs {
+  processingComplete: boolean;
+  processingFailed: boolean;
+  productUpdates: boolean;
 }
 
 export interface AdminUserRow {

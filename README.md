@@ -65,7 +65,8 @@ day-by-day breakdown.
 | Projects (history) | `/projects` | ✅ Built (table/cards, search, status filter, URL-synced pagination) |
 | Project detail (processing) | `/projects/[id]` | ✅ Built (7-state stepper, waveform, retry; live-status polling) |
 | Styleguide | `/styleguide` | ✅ Built |
-| Download & stem player | `/projects/[id]` (completed) | 🔜 Phase 2 |
+| Download & delivery | `/projects/[id]` (completed) | ✅ Built (per-stem + master downloads, download all) |
+| Stem player | `/projects/[id]` (completed) | 🔜 Phase 2 |
 | Settings | `/settings` | 🔜 Phase 3 |
 | Billing | `/billing` | 🔜 Phase 3 |
 | Admin (overview / projects / users) | `/admin` `/admin/projects` `/admin/users` | 🔜 Phase 4 |
@@ -112,11 +113,13 @@ app/
 components/
   ui/            shadcn primitives
   marketing/ auth/ shared/                    feature components
-  upload/ projects/ processing/               upload queue · history · pipeline view
+  upload/ projects/ processing/ delivery/     upload queue · history · pipeline view · downloads
 lib/
   api/           typed KlearNoteApi interface + mock/http clients (swap point) + auth.ts
   auth/          token cookie, AuthProvider, password-reset mocks
   upload/        pluggable uploader seam (simulated / presigned-PUT)
+  download/      pluggable downloader seam (simulated / <a download>) + zip seam
+  delivery/      stems + master as one list, kind metadata, download filenames
   processing/    pure pipeline state machine (single source of truth)
   projects/      history filter groups (UI buckets → ProjectStatus[])
   mock/          fixtures
@@ -128,7 +131,8 @@ lib/
 Deeper design notes live in [`docs/`](docs/): the processing transport
 ([processing-pipeline.md](docs/processing-pipeline.md)), presigned uploads
 ([upload-signing.md](docs/upload-signing.md)), the history view
-([projects-history.md](docs/projects-history.md)), and the sprint backlog.
+([projects-history.md](docs/projects-history.md)), the download seam
+([download-delivery.md](docs/download-delivery.md)), and the sprint backlog.
 
 ## Backend integration
 

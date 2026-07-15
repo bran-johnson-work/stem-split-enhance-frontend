@@ -10,7 +10,7 @@
 // so SSR and client render identically.
 
 import * as React from "react";
-import { waveform } from "@/components/marketing/waveform";
+import { waveform } from "@/lib/audio/peaks";
 import { STAGE_COLORS, STAGE_META } from "@/lib/processing/pipeline";
 import type { ProjectStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";

@@ -1,13 +1,12 @@
-import { CreditCard } from "lucide-react";
-import { PlaceholderPage } from "@/components/shared/page-header";
+import { Suspense } from "react";
+import { BillingView } from "@/components/billing/billing-view";
 
+// BillingView reads `?plan=` (useSearchParams) for the deep link from the pricing
+// page, which Next requires to sit inside a Suspense boundary for static rendering.
 export default function BillingPage() {
   return (
-    <PlaceholderPage
-      title="Billing & subscription"
-      description="Manage your plan, payment method and invoices."
-      phase="Phase 3"
-      icon={CreditCard}
-    />
+    <Suspense>
+      <BillingView />
+    </Suspense>
   );
 }

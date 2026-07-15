@@ -16,29 +16,23 @@ import {
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/lib/auth/auth-context";
+import {
+  annualSavings,
+  monthlyEquivalent,
+  topAnnualDiscount,
+  uploadsLabel,
+} from "@/lib/billing/plans";
 import { usePlans } from "@/lib/hooks/queries";
-import type { Plan } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-/** Largest annual discount across paid plans, e.g. 17 for "Save ~17%". */
-function topAnnualDiscount(plans: Plan[]): number {
-  return plans.reduce((max, p) => {
-    if (p.priceMonthly <= 0) return max;
-    const full = p.priceMonthly * 12;
-    const pct = Math.round(((full - p.priceAnnual) / full) * 100);
-    return Math.max(max, pct);
-  }, 0);
-}
-
-function uploadsLabel(uploads: Plan["uploadsPerMonth"]): string {
-  return uploads === "unlimited" ? "Unlimited uploads" : `${uploads} uploads / mo`;
-}
 
 export function PricingPlans() {
   const { data: plans, isLoading } = usePlans();
+  const { isAuthenticated } = useAuth();
   const [annual, setAnnual] = React.useState(false);
 
   const discount = plans ? topAnnualDiscount(plans) : 0;
+  const cycle = annual ? "annual" : "monthly";
 
   return (
     <div className="space-y-10">
@@ -70,10 +64,14 @@ export function PricingPlans() {
               const isFree = plan.priceMonthly === 0;
               // Annual headline shows the effective monthly rate; the full
               // annual charge moves to a sub-line.
-              const headline = annual
-                ? Math.round(plan.priceAnnual / 12)
-                : plan.priceMonthly;
-              const annualSavings = plan.priceMonthly * 12 - plan.priceAnnual;
+              const headline = monthlyEquivalent(plan, cycle);
+              const savings = annualSavings(plan);
+              // Signed-in visitors go straight to the plan picker on /billing;
+              // everyone else has to sign up first.
+              const href =
+                isAuthenticated && !isFree
+                  ? `/billing?plan=${plan.id}`
+                  : "/signup";
 
               return (
                 <Reveal key={plan.id} delay={i * 80} className="h-full">
@@ -116,10 +114,10 @@ export function PricingPlans() {
                             {annual ? (
                               <>
                                 Billed ${plan.priceAnnual}/yr
-                                {annualSavings > 0 && (
+                                {savings > 0 && (
                                   <span className="text-brand font-medium">
                                     {" "}
-                                    · Save ${annualSavings}
+                                    · Save ${savings}
                                   </span>
                                 )}
                               </>
@@ -155,7 +153,7 @@ export function PricingPlans() {
                         variant={plan.highlighted ? "default" : "outline"}
                         asChild
                       >
-                        <Link href="/signup">
+                        <Link href={href}>
                           {isFree ? "Start free" : `Choose ${plan.name}`}
                         </Link>
                       </Button>

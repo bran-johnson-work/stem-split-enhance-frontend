@@ -1,3 +1,4 @@
+import { SubscriptionBanner } from "@/components/billing/subscription-banner";
 import { AppSidebar } from "@/components/shared/app-sidebar";
 import { MobileNavTrigger } from "@/components/shared/mobile-nav-trigger";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
@@ -22,7 +23,10 @@ export default function AppLayout({
             <UserMenu />
           </div>
         </header>
-        <div className="flex-1 p-4 sm:p-6">{children}</div>
+        <div className="flex-1 p-4 sm:p-6">
+          <SubscriptionBanner />
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

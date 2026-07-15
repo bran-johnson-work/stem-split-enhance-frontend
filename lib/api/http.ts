@@ -5,18 +5,24 @@
 // their endpoints land. Swapped in for MockApi by lib/api/index.ts when
 // NEXT_PUBLIC_API_URL is set.
 
-import { getCurrentUser } from "@/lib/api/auth";
+import { getCurrentUser, requestEmailVerification } from "@/lib/api/auth";
 import { MockApi, type KlearNoteApi } from "@/lib/api/client";
 import * as projectsApi from "@/lib/api/projects";
+import * as usersApi from "@/lib/api/users";
 import type {
   AdminUserRow,
+  CardToken,
+  ChangePasswordInput,
+  ChangePlanInput,
   CreateProjectInput,
   Invoice,
   Paginated,
+  PaymentMethod,
   Plan,
   Project,
   ProjectStatus,
   Subscription,
+  UpdateProfileInput,
   User,
 } from "@/lib/types";
 
@@ -29,6 +35,48 @@ export class HttpApi implements KlearNoteApi {
 
   getCurrentUser(): Promise<User> {
     return getCurrentUser();
+  }
+
+  // The API keys these off the user id, but the contract stays id-free — one
+  // cheap GET /users/me beats leaking the id into every calling component.
+  async updateProfile(input: UpdateProfileInput): Promise<User> {
+    const me = await getCurrentUser();
+
+    const body: usersApi.UserUpdateBody = {};
+    if (input.name !== undefined && input.name !== me.name) {
+      body.full_name = input.name;
+    }
+    const email = input.email?.trim();
+    const emailChanged = Boolean(
+      email && email.toLowerCase() !== me.email.toLowerCase(),
+    );
+    if (emailChanged) body.email = email;
+
+    let user = Object.keys(body).length
+      ? await usersApi.updateUser(me.id, body)
+      : me;
+
+    // No avatar endpoint yet — the AvatarStore seam has already persisted the
+    // image on the device, so just reflect it in the user we hand back.
+    if (input.avatarUrl !== undefined) {
+      user = { ...user, avatarUrl: input.avatarUrl ?? undefined };
+    }
+
+    // A new address is unverified until the user confirms it, so kick off the
+    // verification email the same way signup does.
+    if (emailChanged && email) await requestEmailVerification(email);
+
+    return user;
+  }
+
+  async changePassword(input: ChangePasswordInput): Promise<void> {
+    const me = await getCurrentUser();
+    await usersApi.changePassword(me, input);
+  }
+
+  async deleteAccount(): Promise<void> {
+    const me = await getCurrentUser();
+    await usersApi.deleteUser(me.id);
   }
 
   async listProjects(params?: {
@@ -76,14 +124,36 @@ export class HttpApi implements KlearNoteApi {
   }
 
   // ---- No backend yet — delegate to the mock -----------------------------
+  // Billing has no endpoints at all (no plans, subscription, invoices or
+  // payment methods in the API spec) and no live Stripe keys, so the whole
+  // surface runs on MockApi. Card *collection* is a separate concern — see the
+  // BillingGateway seam in lib/billing/billing-gateway.ts.
   getPlans(): Promise<Plan[]> {
     return this.mock.getPlans();
   }
   getSubscription(): Promise<Subscription> {
     return this.mock.getSubscription();
   }
+  changePlan(input: ChangePlanInput): Promise<Subscription> {
+    return this.mock.changePlan(input);
+  }
+  cancelSubscription(): Promise<Subscription> {
+    return this.mock.cancelSubscription();
+  }
+  resumeSubscription(): Promise<Subscription> {
+    return this.mock.resumeSubscription();
+  }
   listInvoices(): Promise<Invoice[]> {
     return this.mock.listInvoices();
+  }
+  getPaymentMethod(): Promise<PaymentMethod | null> {
+    return this.mock.getPaymentMethod();
+  }
+  attachPaymentMethod(token: CardToken): Promise<PaymentMethod> {
+    return this.mock.attachPaymentMethod(token);
+  }
+  removePaymentMethod(): Promise<void> {
+    return this.mock.removePaymentMethod();
   }
   adminListUsers(): Promise<AdminUserRow[]> {
     return this.mock.adminListUsers();
