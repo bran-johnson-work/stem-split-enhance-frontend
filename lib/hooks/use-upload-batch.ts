@@ -10,15 +10,16 @@ import * as React from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useUploadQueue, type UploadQueue } from "@/lib/hooks/use-upload-queue";
+import { queryKeys } from "@/lib/query/keys";
 import { createUploadBatch } from "@/lib/upload/upload-batch";
 import type { Uploader } from "@/lib/upload/upload-file";
 import type { Paginated, Project } from "@/lib/types";
 
 /** Upsert the finalised project into the detail + list caches (dedupe by id). */
 function insertProject(queryClient: QueryClient, project: Project) {
-  queryClient.setQueryData(["project", project.id], project);
+  queryClient.setQueryData(queryKeys.projects.detail(project.id), project);
   queryClient.setQueriesData<Paginated<Project>>(
-    { queryKey: ["projects"] },
+    { queryKey: queryKeys.projects.lists() },
     (old) => {
       if (!old) return old;
       const existed = old.items.some((p) => p.id === project.id);

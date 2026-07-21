@@ -1,21 +1,16 @@
 "use client";
 
 // Client-side auth surface. Holds the reactive "am I logged in?" flag and the
-// login/register/logout actions, keeping the token cookie and the react-query
-// cache in sync. Route protection itself lives in middleware.ts (server-side);
-// this is for client components that need to act on or react to auth state.
+// login/register/logout actions. The calls themselves are react-query mutations
+// in lib/query/auth, which own the token cookie and cache invalidation — this
+// file is the context wrapper, not the transport. Route protection lives in
+// proxy.ts (server-side); this is for client components that need to act on or
+// react to auth state.
 
 import * as React from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import * as authApi from "@/lib/api/auth";
-import {
-  clearToken,
-  getToken,
-  setToken,
-  subscribeToken,
-} from "@/lib/auth/token";
+import { getToken, subscribeToken } from "@/lib/auth/token";
 import { USE_REAL_BACKEND } from "@/lib/config";
-import { queryKeys } from "@/lib/hooks/queries";
+import { useLogin, useLogout, useRegister } from "@/lib/query/auth";
 import type { LoginValues, SignupValues } from "@/lib/validations/auth";
 
 interface RegisterResult {
@@ -34,7 +29,13 @@ interface AuthContextValue {
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const queryClient = useQueryClient();
+  // The API calls themselves are react-query mutations (lib/query/auth), which
+  // own the token cookie and cache invalidation. This provider is only the thin
+  // context that exposes them as awaitable actions plus the reactive
+  // "am I logged in?" flag — the forms' interface is unchanged.
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
+  const logoutMutation = useLogout();
 
   // The token cookie is external state — read it through useSyncExternalStore so
   // login/logout (which call setToken/clearToken → notify) re-render subscribers,
@@ -46,36 +47,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
   const isAuthenticated = Boolean(token);
 
+  // `mutateAsync` (not `mutate`) because callers await these and surface the
+  // rejection in their own form error state.
+  const { mutateAsync: runLogin } = loginMutation;
+  const { mutateAsync: runRegister } = registerMutation;
+  const { mutateAsync: runLogout } = logoutMutation;
+
   const login = React.useCallback(
     async (values: LoginValues) => {
-      const accessToken = await authApi.login(values);
-      setToken(accessToken);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
+      await runLogin(values);
     },
-    [queryClient],
+    [runLogin],
   );
 
   const register = React.useCallback(
     async (values: SignupValues): Promise<RegisterResult> => {
-      await authApi.register(values);
+      await runRegister(values);
       // Real backend: the account is unverified and cannot log in yet.
       if (USE_REAL_BACKEND) return { needsVerification: true };
       // Mock: no email step — log straight in for a smooth local demo.
-      await login({
+      await runLogin({
         email: values.email,
         password: values.password,
         remember: false,
       });
       return { needsVerification: false };
     },
-    [login],
+    [runRegister, runLogin],
   );
 
   const logout = React.useCallback(async () => {
-    await authApi.logout();
-    clearToken();
-    queryClient.clear();
-  }, [queryClient]);
+    await runLogout();
+  }, [runLogout]);
 
   const value = React.useMemo(
     () => ({ isAuthenticated, login, register, logout }),
