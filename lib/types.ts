@@ -54,6 +54,10 @@ export interface Project {
   inputFiles?: ProjectInputFile[]; // all uploaded source files (batch)
   masterUrl?: string;
   error?: string;
+  // The worker's own label for the step in flight, e.g. "Separating stems
+  // (2/4 models)". Only present on a detail fetch against a real backend, where
+  // it is composed in from the project's latest processing job.
+  currentStep?: string;
 }
 
 // Payload for creating a project once its source file has been uploaded.

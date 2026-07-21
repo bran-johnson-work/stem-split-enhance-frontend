@@ -7,8 +7,10 @@
 
 import { getCurrentUser, requestEmailVerification } from "@/lib/api/auth";
 import { MockApi, type KlearNoteApi } from "@/lib/api/client";
+import * as jobsApi from "@/lib/api/jobs";
 import * as projectsApi from "@/lib/api/projects";
 import * as usersApi from "@/lib/api/users";
+import { isTerminal, statusForProgress } from "@/lib/processing/pipeline";
 import type {
   AdminUserRow,
   CardToken,
@@ -110,8 +112,45 @@ export class HttpApi implements KlearNoteApi {
     };
   }
 
-  getProject(id: string): Promise<Project> {
-    return projectsApi.getProject(id);
+  /**
+   * A project plus the live detail its own endpoint doesn't carry.
+   *
+   * `ProjectResponse` reports a coarse status and no progress at all, so the
+   * detail view composes in the project's latest processing job (real progress
+   * + the worker's current step) and, once that job is finished, its stems.
+   * Doing it here means every consumer — the stepper, the progress bar, the
+   * delivery panel — keeps reading a plain `Project` and needs no changes.
+   *
+   * Deliberately *not* done in `listProjects`: that would be one extra request
+   * per row (N+1) to fill a progress bar the list only shows coarsely.
+   */
+  async getProject(id: string): Promise<Project> {
+    const project = await projectsApi.getProject(id);
+
+    // A project is job-less between upload-complete and the worker claiming it;
+    // a missing job is normal, not an error, so it must not fail the detail view.
+    const job = await jobsApi.getLatestJob(id).catch(() => null);
+    if (!job) return project;
+
+    const merged: Project = {
+      ...project,
+      progress: job.progress,
+      currentStep: job.currentStep,
+      // The project's own terminal status wins — it is the authoritative record
+      // of completion. Mid-flight, the finer stage is derived from real progress
+      // so the stepper advances instead of sitting on "analyzing".
+      status: isTerminal(project.status)
+        ? project.status
+        : statusForProgress(job.progress),
+      ...(job.errorMessage ? { error: job.errorMessage } : {}),
+    };
+
+    if (project.status !== "completed" || !job.isFinished) return merged;
+
+    // Signed stem URLs are short-lived, so they're fetched only once the project
+    // is complete — the point at which detail polling has already stopped.
+    const stems = await jobsApi.getJobStems(id, job.id).catch(() => []);
+    return stems.length ? { ...merged, stems } : merged;
   }
 
   async createProject(input: CreateProjectInput): Promise<Project> {
