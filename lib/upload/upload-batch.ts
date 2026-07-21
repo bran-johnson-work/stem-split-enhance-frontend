@@ -1,6 +1,6 @@
 // Per-batch upload orchestration (product decision: one project per batch). All
 // files uploaded in a session go into a single project:
-//   create project (once, lazily) → sign + PUT each file → upload-complete (once).
+//   create project (once, lazily) → sign + POST each file to S3 → upload-complete (once).
 //
 // Env-gated: with a backend it runs the real 4-step flow against Dakota's API;
 // without one it simulates transfers and builds a mock project. Either way it
@@ -14,7 +14,7 @@ import { PROJECTS } from "@/lib/mock/fixtures";
 import {
   abortError,
   simulatedUploader,
-  xhrUpload,
+  xhrUploadPost,
   type Uploader,
 } from "@/lib/upload/upload-file";
 import type { Project, ProjectInputFile } from "@/lib/types";
@@ -62,16 +62,20 @@ function realBatch(): UploadBatch {
     const projectId = await ensureProject(file);
     if (signal.aborted) throw abortError();
 
-    const contentType = audioContentType(file);
+    // The declared content type is signed into the policy, so S3 will reject the
+    // POST unless the `Content-Type` field we send back matches it exactly.
     const signed = await projectsApi.signFileUpload(
       projectId,
       file.name,
-      contentType,
+      audioContentType(file),
+      file.size,
     );
-    const putUrl = projectsApi.resolveStorageUrl(signed.url);
-    // The declared content type must match the PUT's Content-Type header.
-    await xhrUpload(putUrl, file, { onProgress, signal }, contentType);
-    return { storagePath: signed.storage_key };
+    if (signal.aborted) throw abortError();
+
+    return xhrUploadPost(signed.url, signed.fields, signed.storage_key, file, {
+      onProgress,
+      signal,
+    });
   };
 
   const finalize = async (): Promise<Project> => {
