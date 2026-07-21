@@ -8,9 +8,9 @@
 
 import { apiFetch } from "@/lib/api/fetch";
 import { readStoredAvatar } from "@/lib/avatar/avatar-store";
-import { ADMIN_EMAILS, USE_REAL_BACKEND, apiUrl } from "@/lib/config";
+import { USE_REAL_BACKEND, apiUrl } from "@/lib/config";
 import { CURRENT_USER } from "@/lib/mock/fixtures";
-import type { User } from "@/lib/types";
+import type { User, UserRole } from "@/lib/types";
 import type { LoginValues, SignupValues } from "@/lib/validations/auth";
 
 /** Shape of the API's UserResponse (see docs/API doc.yaml). */
@@ -20,6 +20,8 @@ export interface UserResponse {
   full_name?: string | null;
   is_active: boolean;
   is_verified: boolean;
+  /** Server-assigned, from the `users.role` column. Never client-derived. */
+  role: UserRole;
   created_at: string;
   updated_at: string;
 }
@@ -43,17 +45,21 @@ export const DEV_PASSWORD = "123!@#qweQWE";
 const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Map the backend UserResponse onto the app's richer `User`. The API has no
- * role or subscription, so role is assigned from the admin allowlist and a
- * default subscription is borrowed from the mock until billing exists.
+ * Map the backend UserResponse onto the app's richer `User`.
+ *
+ * `role` is the backend's own column — the client must never decide who is an
+ * admin. It gates admin navigation only; the API enforces authorisation itself,
+ * so a tampered client buys nothing but a broken menu.
+ *
+ * `subscription` is still borrowed from the mock: the real billing surface is
+ * Stripe Checkout/Portal-based and is fetched separately (lib/query/billing).
  */
 export function mapUser(u: UserResponse): User {
-  const role = ADMIN_EMAILS.includes(u.email.toLowerCase()) ? "admin" : "user";
   return {
     id: u.id,
     name: u.full_name?.trim() || u.email.split("@")[0],
     email: u.email,
-    role,
+    role: u.role,
     createdAt: u.created_at,
     subscription: CURRENT_USER.subscription,
   };

@@ -7,11 +7,12 @@
 // Two modes, chosen by env:
 //   • Mock (no backend): a local simulator advances progress to completion and
 //     derives the stage from it — a self-contained demo.
-//   • Real backend: the polled project status (from useProject's refetchInterval)
-//     is authoritative; the simulator only *overlays* smooth sub-stage progress
-//     while the backend says "processing", capped below 100 so it never claims
-//     completion before the backend confirms it (decision: simulated overlay on
-//     polling — the backend reports no intra-processing stage or progress).
+//   • Real backend: the polled project is authoritative and is passed straight
+//     through. It now carries genuine progress — HttpApi.getProject composes in
+//     the worker's latest job (see lib/api/jobs) — so there is nothing left to
+//     simulate. The earlier overlay existed only because the backend reported no
+//     intra-processing progress; inventing motion on top of real numbers would
+//     now just make the bar lie.
 
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -42,35 +43,15 @@ export interface ProcessingSnapshot {
 const TICK_MS = 900;
 const STEP_MIN = 3;
 const STEP_MAX = 7;
-/** In overlay mode the simulator stops here — the backend poll owns completion. */
-const OVERLAY_CAP = 97;
 
 interface StatusState {
   status: ProjectStatus;
   progress: number;
 }
 
-/**
- * Reconcile the local overlay with the authoritative (polled) status: terminal
- * states are forced, and a queued→processing flip kicks off the overlay. Kept
- * pure so it can run during render (React's "adjust state on a prop change").
- */
-function reconcile(prev: StatusState, authStatus: ProjectStatus): StatusState {
-  if (authStatus === "completed") return { status: "completed", progress: 100 };
-  if (authStatus === "failed") return { status: "failed", progress: 0 };
-  if (authStatus === "queued") {
-    return prev.status === "queued" ? prev : { status: "queued", progress: 0 };
-  }
-  if (prev.status === "queued" || isTerminal(prev.status)) {
-    return { status: "analyzing", progress: Math.max(prev.progress, 1) };
-  }
-  return prev;
-}
-
 export function useProcessingStatus(project: Project): ProcessingSnapshot {
   const queryClient = useQueryClient();
   const simulated = !USE_REAL_BACKEND;
-  const authStatus = project.status;
 
   const [state, setState] = React.useState<StatusState>(() => ({
     status: project.status,
@@ -78,56 +59,51 @@ export function useProcessingStatus(project: Project): ProcessingSnapshot {
   }));
 
   // Adjust state during render (the blessed pattern — no setState-in-effect):
-  //   • on project change, re-seed from the new snapshot;
-  //   • in real mode, reconcile with each authoritative (polled) status change.
+  // a different project means the simulator re-seeds from the new snapshot.
   const [seededId, setSeededId] = React.useState(project.id);
-  const [prevAuth, setPrevAuth] = React.useState(authStatus);
   if (seededId !== project.id) {
     setSeededId(project.id);
-    setPrevAuth(authStatus);
     setState({ status: project.status, progress: project.progress });
-  } else if (!simulated && prevAuth !== authStatus) {
-    setPrevAuth(authStatus);
-    setState((prev) => reconcile(prev, authStatus));
   }
 
   const retry = React.useCallback(() => {
     if (simulated) {
       setState({ status: "queued", progress: 0 });
-    } else {
-      // No backend re-queue endpoint yet — refetch the authoritative status.
-      queryClient.invalidateQueries({ queryKey: queryKeys.project(project.id) });
+      return;
     }
+    // No backend re-queue endpoint yet — refetch the authoritative status.
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.detail(project.id),
+    });
   }, [simulated, queryClient, project.id]);
 
-  // The simulated advance. In mock mode it runs to completion; in real mode it
-  // only advances while the backend is processing, and is capped short of 100.
+  // Mock-only advance. Against a real backend the polled job supplies progress,
+  // so no timer runs at all — one less interval per open project detail.
   React.useEffect(() => {
-    const advancing = simulated
-      ? !isTerminal(state.status)
-      : !isTerminal(authStatus) && authStatus !== "queued";
-    if (!advancing) return;
+    if (!simulated || isTerminal(state.status)) return;
 
-    const cap = simulated ? 100 : OVERLAY_CAP;
     const id = setInterval(() => {
       setState((prev) => {
         if (isTerminal(prev.status)) return prev;
         const next = Math.min(
-          cap,
+          100,
           prev.progress + STEP_MIN + Math.random() * (STEP_MAX - STEP_MIN),
         );
         return { progress: next, status: statusForProgress(next) };
       });
     }, TICK_MS);
     return () => clearInterval(id);
-    // Re-arm on each stage transition (mock) and each authoritative change (real).
-  }, [simulated, state.status, authStatus]);
+    // Re-arm on each stage transition so the interval tracks the current stage.
+  }, [simulated, state.status]);
+
+  const status = simulated ? state.status : project.status;
+  const progress = simulated ? state.progress : project.progress;
 
   return {
-    status: state.status,
-    progress: Math.round(state.progress),
-    stageProgress: Math.round(stageProgress(state.status, state.progress)),
-    isRunning: !isTerminal(state.status),
+    status,
+    progress: Math.round(progress),
+    stageProgress: Math.round(stageProgress(status, progress)),
+    isRunning: !isTerminal(status),
     isSimulated: simulated,
     retry,
   };
