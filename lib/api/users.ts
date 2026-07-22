@@ -5,7 +5,7 @@
 
 import { login, mapUser, type UserResponse } from "@/lib/api/auth";
 import { apiFetch } from "@/lib/api/fetch";
-import { setToken } from "@/lib/auth/token";
+import { setRefreshToken, setToken } from "@/lib/auth/token";
 import { apiUrl } from "@/lib/config";
 import type { ChangePasswordInput, User } from "@/lib/types";
 
@@ -68,10 +68,13 @@ export async function changePassword(
 
   await updateUser(user.id, { password: newPassword });
 
-  const token = await login({
+  const session = await login({
     email: user.email,
     password: newPassword,
     remember: false,
   });
-  setToken(token);
+  setToken(session.accessToken);
+  // The re-login issued a fresh refresh token; keeping the old one would leave
+  // the session unable to renew once this access token expires.
+  if (session.refreshToken) setRefreshToken(session.refreshToken);
 }

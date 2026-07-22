@@ -10,17 +10,19 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as authApi from "@/lib/api/auth";
-import { clearToken, setToken } from "@/lib/auth/token";
+import { clearToken, setRefreshToken, setToken } from "@/lib/auth/token";
 import { queryKeys } from "@/lib/query/keys";
 import type { LoginValues, SignupValues } from "@/lib/validations/auth";
 
-/** Log in, store the token, and refetch the current user under the new identity. */
+/** Log in, store the tokens, and refetch the current user under the new identity. */
 export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (values: LoginValues) => authApi.login(values),
-    onSuccess: (accessToken) => {
+    onSuccess: ({ accessToken, refreshToken }) => {
       setToken(accessToken);
+      // Absent in mock mode, which has no refresh endpoint to call.
+      if (refreshToken) setRefreshToken(refreshToken);
       // Returned so the mutation stays pending until the user is loaded — the
       // caller can redirect knowing the sidebar won't flash an empty account.
       return queryClient.invalidateQueries({
