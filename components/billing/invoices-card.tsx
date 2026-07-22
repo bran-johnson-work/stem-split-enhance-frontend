@@ -35,6 +35,12 @@ export function InvoicesCard() {
 
   async function handleDownload(invoice: Invoice) {
     if (pendingId) return;
+    // A finalised invoice always carries a PDF URL; guard the rare one that
+    // doesn't so an anchor click can't fall back to "downloading" the page.
+    if (!invoice.url) {
+      toast.error("That invoice isn't available to download yet.");
+      return;
+    }
     setPendingId(invoice.id);
     try {
       // Invoices ride the same Downloader seam as stems and masters: simulated
