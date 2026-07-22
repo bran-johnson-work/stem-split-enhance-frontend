@@ -9,6 +9,7 @@ import { ProjectsPagination } from "@/components/projects/projects-pagination";
 import { ProjectsTable } from "@/components/projects/projects-table";
 import { ProjectsToolbar } from "@/components/projects/projects-toolbar";
 import { PageHeader } from "@/components/shared/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +28,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  * Project history (KN-28). Owns the filter/pagination state, which lives in the
  * URL (`?q=&status=&page=`) so it's shareable and survives back/forward, and
  * feeds `useProjects`. Renders the table (desktop) / cards (mobile), with
- * distinct loading, empty (first-run) and no-results (filtered) states.
+ * distinct loading, error, empty (first-run) and no-results (filtered) states.
  */
 export function ProjectsHistory() {
   const router = useRouter();
@@ -84,7 +85,7 @@ export function ProjectsHistory() {
     commit({ q: null, status: null, page: null });
   };
 
-  const { data, isLoading, isFetching } = useProjects({
+  const { data, isLoading, isFetching, isError } = useProjects({
     page,
     pageSize: HISTORY_PAGE_SIZE,
     search: q,
@@ -127,6 +128,16 @@ export function ProjectsHistory() {
 
       {isLoading ? (
         <HistorySkeleton />
+      ) : isError ? (
+        // A failed request must never render as "no projects yet" — that tells
+        // a user with a full library that their work is gone.
+        <Alert variant="destructive">
+          <AlertTitle>Couldn&apos;t load your projects</AlertTitle>
+          <AlertDescription>
+            Refresh the page to try again. If it keeps happening, sign out and
+            back in.
+          </AlertDescription>
+        </Alert>
       ) : total === 0 ? (
         <EmptyState filtersActive={filtersActive} onClear={clearFilters} />
       ) : (
