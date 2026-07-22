@@ -1,11 +1,12 @@
-// Real backend implementation of the KlearNoteApi contract. Only the endpoints
-// Dakota's API actually exposes are wired here — current user, project list/get,
-// and project create. Everything with no backend yet (plans, subscription,
-// invoices, admin) is delegated to MockApi, so those screens keep working until
-// their endpoints land. Swapped in for MockApi by lib/api/index.ts when
+// Real backend implementation of the KlearNoteApi contract. Wired to real
+// endpoints: current user, project list/get/create, jobs, and invoices (read
+// live from Stripe). The rest of billing (plans, subscription, payment method)
+// and admin are still delegated to MockApi, so those screens keep working until
+// their endpoints are wired. Swapped in for MockApi by lib/api/index.ts when
 // NEXT_PUBLIC_API_URL is set.
 
 import { getCurrentUser, requestEmailVerification } from "@/lib/api/auth";
+import * as billingApi from "@/lib/api/billing";
 import { MockApi, type KlearNoteApi } from "@/lib/api/client";
 import * as jobsApi from "@/lib/api/jobs";
 import * as projectsApi from "@/lib/api/projects";
@@ -162,10 +163,9 @@ export class HttpApi implements KlearNoteApi {
     return projectsApi.mapProject(res);
   }
 
-  // ---- No backend yet — delegate to the mock -----------------------------
-  // Billing has no endpoints at all (no plans, subscription, invoices or
-  // payment methods in the API spec) and no live Stripe keys, so the whole
-  // surface runs on MockApi. Card *collection* is a separate concern — see the
+  // ---- Mostly mock — plans/subscription/payment method aren't wired yet ---
+  // Invoices (below) are real; the rest of billing still runs on MockApi until
+  // its endpoints are wired. Card *collection* is a separate concern — see the
   // BillingGateway seam in lib/billing/billing-gateway.ts.
   getPlans(): Promise<Plan[]> {
     return this.mock.getPlans();
@@ -182,8 +182,10 @@ export class HttpApi implements KlearNoteApi {
   resumeSubscription(): Promise<Subscription> {
     return this.mock.resumeSubscription();
   }
+  // Invoices are real (read live from Stripe), even though the rest of billing
+  // still runs on the mock — a paid user reaches this once they've checked out.
   listInvoices(): Promise<Invoice[]> {
-    return this.mock.listInvoices();
+    return billingApi.listInvoices();
   }
   getPaymentMethod(): Promise<PaymentMethod | null> {
     return this.mock.getPaymentMethod();
