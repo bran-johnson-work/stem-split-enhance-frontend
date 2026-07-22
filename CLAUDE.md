@@ -61,6 +61,28 @@ Non-negotiables:
 - Default to Server Components. Push `"use client"` down to the interactive leaf;
   never onto a page or layout.
 
+## Errors and sessions
+
+- **Sessions survive an expired access token.** The backend issues a short-lived
+  access token plus an opaque, rotating refresh token. `lib/api/fetch.ts`
+  intercepts a 401, exchanges the refresh token at `/auth/refresh`, and replays
+  the original request once. Two properties are load-bearing and must not be
+  broken: the refresh is **single-flighted** (`refreshInFlight`), because the
+  backend treats a replayed single-use token as theft and would log the user out
+  of every device; and the **new refresh token from each response must be
+  stored**, or the session dies at the next renewal.
+- **401 is handled once, centrally.** Only a *failed* refresh reaches
+  `handleError` in `lib/query/client.ts`, which routes it to
+  `lib/auth/session.ts::handleUnauthorized` — clear tokens, redirect to
+  `/login?expired=1&next=…`. Never add per-hook 401 handling.
+- **`hasSession()`, not `getToken()`,** is the "is the user signed in" test: the
+  access cookie is session-scoped and gone after a browser restart, while the
+  refresh cookie persists and can revive the session. `proxy.ts` follows the same
+  rule, and only redirects when neither credential is usable.
+- **An error state is never an empty state.** Branch on `isError` *before*
+  emptiness, or a failed request renders as "No projects yet" and tells a user
+  their work is gone. An unknown count renders `—`, never `0`.
+
 ## Performance
 
 - State lives as low as the tree allows; don't hoist a search field above a table.
