@@ -43,6 +43,11 @@ export interface KlearNoteApi {
   }): Promise<Paginated<Project>>;
   getProject(id: string): Promise<Project>;
   createProject(input: CreateProjectInput): Promise<Project>;
+  /**
+   * Create an empty project (no files yet) to upload audio into. Projects are
+   * unlimited; the plan meters audio files, enforced as each file is uploaded.
+   */
+  createEmptyProject(name: string): Promise<Project>;
   getPlans(): Promise<Plan[]>;
   getSubscription(): Promise<Subscription>;
   /**
@@ -181,6 +186,27 @@ export class MockApi implements KlearNoteApi {
     };
     // Prepend to the in-memory fixture so the new track shows up in history
     // across client navigations (resets on a full page reload — mock only).
+    PROJECTS.unshift(project);
+    return clone(project);
+  }
+
+  async createEmptyProject(name: string) {
+    await delay(300);
+    const nowIso = new Date().toISOString();
+    const project: Project = {
+      id: `p_${Date.now()}`,
+      title: name.trim() || "Untitled project",
+      status: "queued",
+      progress: 0,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      sourceFileName: "",
+      sourceSizeBytes: 0,
+      durationSec: 0,
+      stems: [],
+      inputFiles: [], // empty until files are uploaded into it
+    };
+    // Prepend so it shows in history across client navigations (mock only).
     PROJECTS.unshift(project);
     return clone(project);
   }

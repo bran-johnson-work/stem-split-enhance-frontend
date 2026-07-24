@@ -1,0 +1,33 @@
+# Keep the build context small and never leak secrets into an image layer.
+node_modules
+.next
+out
+build
+coverage
+
+# Secrets — NEXT_PUBLIC_API_URL is passed as a build-arg, never copied in.
+.env
+.env.*
+!.env.example
+*.pem
+
+# VCS / tooling / local-only material
+.git
+.gitignore
+.gitattributes
+.agents
+.claude
+.vercel
+Dockerfile
+.dockerignore
+README.md
+LICENSE
+
+# TS incremental build cache and logs
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.DS_Store

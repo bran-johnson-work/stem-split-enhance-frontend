@@ -12,6 +12,7 @@ import type { LucideIcon } from "lucide-react";
 import { ProjectProgress } from "@/components/projects/project-progress";
 import { StatusBadge } from "@/components/projects/status-badge";
 import { PageHeader } from "@/components/shared/page-header";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,7 +31,7 @@ interface Stat {
 
 export default function DashboardPage() {
   const { data: user } = useCurrentUser();
-  const { data, isLoading } = useProjects();
+  const { data, isLoading, isError } = useProjects();
   const projects = data?.items ?? [];
   const processing = projects.filter((p) => isProcessing(p.status)).length;
   const completed = projects.filter((p) => p.status === "completed").length;
@@ -99,7 +100,9 @@ export default function DashboardPage() {
                   <Skeleton className="h-9 w-12" />
                 ) : (
                   <span className="text-3xl font-semibold tabular-nums">
-                    {s.value}
+                    {/* An unknown count reads as "—"; a hard 0 would claim the
+                        user has nothing when we simply couldn't ask. */}
+                    {isError ? "—" : s.value}
                   </span>
                 )}
               </CardContent>
@@ -127,6 +130,14 @@ export default function DashboardPage() {
                 <Skeleton className="h-6 w-full" />
               </div>
             ))
+          ) : isError ? (
+            <Alert variant="destructive" className="my-2">
+              <AlertTitle>Couldn&apos;t load your projects</AlertTitle>
+              <AlertDescription>
+                Refresh the page to try again. If it keeps happening, sign out
+                and back in.
+              </AlertDescription>
+            </Alert>
           ) : projects.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
               <div className="bg-muted text-muted-foreground grid size-12 place-items-center rounded-xl">

@@ -29,11 +29,16 @@ function insertProject(queryClient: QueryClient, project: Project) {
   );
 }
 
-export function useUploadBatch(): UploadQueue {
+/**
+ * @param projectId Upload into this pre-created project (create-project-first
+ *   flow). Callers should key the consuming component by `projectId` so a new
+ *   project gets a fresh batch. Omit for the legacy lazy-create batch.
+ */
+export function useUploadBatch(projectId?: string): UploadQueue {
   const queryClient = useQueryClient();
 
   const batchRef = React.useRef<ReturnType<typeof createUploadBatch>>(null);
-  batchRef.current ??= createUploadBatch();
+  batchRef.current ??= createUploadBatch(projectId);
 
   // Stable uploader that always delegates to the current batch (clear() swaps it).
   const uploader = React.useMemo<Uploader>(
@@ -73,13 +78,13 @@ export function useUploadBatch(): UploadQueue {
       });
   }, [uploading, queued, success, queryClient]);
 
-  // Clearing the queue starts a fresh project for the next batch.
+  // Clearing the queue starts a fresh batch for the same project.
   const clear = React.useCallback(() => {
     queue.clear();
-    batchRef.current = createUploadBatch();
+    batchRef.current = createUploadBatch(projectId);
     finalizedCountRef.current = 0;
     finalizingRef.current = false;
-  }, [queue]);
+  }, [queue, projectId]);
 
   return { ...queue, clear };
 }

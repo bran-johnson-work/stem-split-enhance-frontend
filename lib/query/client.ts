@@ -1,15 +1,3 @@
-// The single place the app's QueryClient is built and handed out. Two enterprise
-// concerns live here:
-//
-//   1. App-Router-safe instancing. On the server a fresh client is made per
-//      request (a shared one would leak one user's cache into another's SSR);
-//      in the browser a lazy singleton is reused across renders so the cache
-//      survives navigation. This is the pattern the TanStack + Next docs bless.
-//   2. One set of defaults + one error seam for the whole app: a sane
-//      stale/gc/retry policy (no ret/toast storms on 4xx), and a QueryCache /
-//      MutationCache `onError` that funnels every unexpected failure to a single
-//      reporter (swap the console call for Sentry/Datadog without touching a
-//      component).
 
 import {
   MutationCache,
@@ -20,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 // Side-effect import: applies the typed-error (Register) augmentation app-wide.
 import "@/lib/query/register";
+import { handleUnauthorized } from "@/lib/auth/session";
 
 /** Status carried on errors thrown by lib/api/fetch (undefined for mock errors). */
 function statusOf(error: unknown): number | undefined {
@@ -28,12 +17,12 @@ function statusOf(error: unknown): number | undefined {
     : undefined;
 }
 
-/**
- * Central failure reporter. Today it just logs; this is the seam where an
- * enterprise app wires Sentry/Datadog/structured logging so error reporting is
- * configured once instead of per call site.
- */
-function reportError(scope: "query" | "mutation", error: unknown) {
+
+function handleError(scope: "query" | "mutation", error: unknown) {
+  if (statusOf(error) === 401) {
+    handleUnauthorized();
+    return;
+  }
   if (process.env.NODE_ENV !== "production") {
     console.error(`[react-query:${scope}]`, error);
   }
@@ -68,10 +57,10 @@ export function makeQueryClient(): QueryClient {
       },
     },
     queryCache: new QueryCache({
-      onError: (error) => reportError("query", error),
+      onError: (error) => handleError("query", error),
     }),
     mutationCache: new MutationCache({
-      onError: (error) => reportError("mutation", error),
+      onError: (error) => handleError("mutation", error),
     }),
   });
 }
