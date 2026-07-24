@@ -29,8 +29,13 @@ export interface UploadBatch {
   hasProject: () => boolean;
 }
 
-export function createUploadBatch(): UploadBatch {
-  return USE_REAL_BACKEND ? realBatch() : mockBatch();
+/**
+ * @param projectId When given, files upload into this pre-created project (the
+ *   "create project first" flow). When omitted, the batch lazily creates one
+ *   project for the whole batch (legacy behaviour).
+ */
+export function createUploadBatch(projectId?: string): UploadBatch {
+  return USE_REAL_BACKEND ? realBatch(projectId) : mockBatch(projectId);
 }
 
 function deriveTitle(filename: string): string {
@@ -39,10 +44,13 @@ function deriveTitle(filename: string): string {
 
 // ---- Real backend: create → sign → PUT → complete -------------------------
 
-function realBatch(): UploadBatch {
-  // Memoised so the batch's files share one project. Reset on failure so a retry
-  // re-attempts creation rather than reusing a rejected promise.
-  let projectPromise: Promise<string> | null = null;
+function realBatch(projectId?: string): UploadBatch {
+  // Memoised so the batch's files share one project. Pre-resolved when the
+  // project already exists; otherwise reset on failure so a retry re-attempts
+  // creation rather than reusing a rejected promise.
+  let projectPromise: Promise<string> | null = projectId
+    ? Promise.resolve(projectId)
+    : null;
 
   const ensureProject = (file: File): Promise<string> => {
     if (!projectPromise) {
@@ -89,7 +97,7 @@ function realBatch(): UploadBatch {
 
 // ---- Mock: simulated transfer + fixture project ---------------------------
 
-function mockBatch(): UploadBatch {
+function mockBatch(projectId?: string): UploadBatch {
   const uploaded: File[] = [];
   let project: Project | null = null;
 
@@ -101,6 +109,37 @@ function mockBatch(): UploadBatch {
 
   const finalize = async (): Promise<Project> => {
     if (uploaded.length === 0) throw new Error("No files uploaded.");
+
+    // Attach the files to a pre-created project (create-project-first / resume
+    // flow), preserving its id, name and created date.
+    if (projectId) {
+      const existing = PROJECTS.find((p) => p.id === projectId);
+      const built = buildMockProject(
+        uploaded,
+        projectId,
+        existing?.createdAt,
+        existing?.title,
+      );
+      if (existing) {
+        // Resuming a project that already has files must *add* to them, not
+        // replace them — merge by filename (the real backend records all stored
+        // objects under the prefix, so this keeps mock parity).
+        const newNames = new Set((built.inputFiles ?? []).map((f) => f.filename));
+        const merged = [
+          ...(existing.inputFiles ?? []).filter((f) => !newNames.has(f.filename)),
+          ...(built.inputFiles ?? []),
+        ];
+        Object.assign(existing, built, {
+          inputFiles: merged,
+          sourceFileName: merged[0]?.filename ?? built.sourceFileName,
+          sourceSizeBytes: merged[0]?.sizeBytes ?? built.sourceSizeBytes,
+        });
+        return { ...existing };
+      }
+      PROJECTS.unshift(built);
+      return { ...built };
+    }
+
     if (!project) {
       project = buildMockProject(uploaded);
       PROJECTS.unshift(project);
@@ -114,13 +153,18 @@ function mockBatch(): UploadBatch {
     return { ...project };
   };
 
-  return { uploader, finalize, hasProject: () => uploaded.length > 0 };
+  return {
+    uploader,
+    finalize,
+    hasProject: () => projectId != null || uploaded.length > 0,
+  };
 }
 
 function buildMockProject(
   files: File[],
   id?: string,
   createdAt?: string,
+  title?: string,
 ): Project {
   const nowIso = new Date().toISOString();
   const inputFiles: ProjectInputFile[] = files.map((f, i) => ({
@@ -132,7 +176,7 @@ function buildMockProject(
   const primary = files[0];
   return {
     id: id ?? `p_${Date.now()}`,
-    title: deriveTitle(primary.name),
+    title: title ?? deriveTitle(primary.name),
     status: "queued",
     progress: 0,
     createdAt: createdAt ?? nowIso,

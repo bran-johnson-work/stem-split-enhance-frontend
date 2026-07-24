@@ -164,6 +164,12 @@ export class HttpApi implements KlearNoteApi {
     return projectsApi.mapProject(res);
   }
 
+  // Create an empty project up front (the "create project first" upload flow);
+  // files are uploaded into it via the presigned-URL batch.
+  createEmptyProject(name: string): Promise<Project> {
+    return projectsApi.createProject(name).then(projectsApi.mapProject);
+  }
+
   // ---- Mostly mock — plans/subscription/payment method aren't wired yet ---
   // Invoices (below) are real; the rest of billing still runs on MockApi until
   // its endpoints are wired. Card *collection* is a separate concern — see the
