@@ -23,6 +23,8 @@ export interface UserResponse {
   is_verified: boolean;
   /** Server-assigned, from the `users.role` column. Never client-derived. */
   role: UserRole;
+  /** Short-lived signed URL to the user's avatar, or null. */
+  avatar_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +58,10 @@ const delay = (ms = 700) => new Promise((r) => setTimeout(r, ms));
  *
  * `subscription` is still borrowed from the mock: the real billing surface is
  * Stripe Checkout/Portal-based and is fetched separately (lib/query/billing).
+ *
+ * `avatarUrl` comes straight from the backend now (a signed URL over the user's
+ * stored avatar object), so it is per-user and no longer read from device
+ * localStorage — that was what made one device's avatar bleed across accounts.
  */
 export function mapUser(u: UserResponse): User {
   return {
@@ -64,6 +70,7 @@ export function mapUser(u: UserResponse): User {
     email: u.email,
     role: u.role,
     createdAt: u.created_at,
+    avatarUrl: u.avatar_url ?? undefined,
     subscription: CURRENT_USER.subscription,
   };
 }
@@ -156,10 +163,10 @@ export async function confirmEmailVerification(token: string): Promise<void> {
 }
 
 /**
- * DEFERRED: neither the API's UserResponse nor the mock fixture carries an
- * avatar, so the image the user picked (kept on the device by the AvatarStore
- * seam) is overlaid here — without this it would vanish on the next refetch.
- * Delete alongside `localAvatarStore` when the avatar endpoint lands.
+ * Mock-only avatar overlay. The mock fixture carries no avatar, so the image the
+ * user picked (kept on the device by `localAvatarStore`) is overlaid here.
+ * Against a real backend the avatar comes from `UserResponse.avatar_url` and this
+ * is not used — delete it alongside `localAvatarStore` if mock mode is retired.
  */
 function withStoredAvatar(user: User): User {
   const stored = readStoredAvatar();
@@ -172,6 +179,8 @@ export async function getCurrentUser(): Promise<User> {
     await delay(150);
     return withStoredAvatar(structuredClone(CURRENT_USER));
   }
+  // Real backend: the avatar is a per-user signed URL on the response, so no
+  // device-local overlay (that used to leak one account's avatar onto another).
   const res = await apiFetch<UserResponse>(apiUrl("/users/me"));
-  return withStoredAvatar(mapUser(res));
+  return mapUser(res);
 }

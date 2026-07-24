@@ -32,6 +32,37 @@ export async function deleteUser(id: string): Promise<void> {
   await apiFetch<void>(apiUrl(`/users/${id}`), { method: "DELETE" });
 }
 
+/** A presigned POST for uploading a new avatar image directly to S3. */
+interface AvatarUploadUrlResponse {
+  storage_key: string;
+  url: string;
+  fields: Record<string, string>;
+}
+
+/** Request a presigned POST to upload a new avatar of the given content type. */
+export function requestAvatarUploadUrl(
+  contentType: string,
+): Promise<AvatarUploadUrlResponse> {
+  return apiFetch<AvatarUploadUrlResponse>(
+    apiUrl("/users/me/avatar/upload-url"),
+    { method: "POST", json: { content_type: contentType } },
+  );
+}
+
+/** Finalise the avatar upload; returns the updated user (with the signed URL). */
+export function completeAvatarUpload(): Promise<User> {
+  return apiFetch<UserResponse>(apiUrl("/users/me/avatar/complete"), {
+    method: "POST",
+  }).then(mapUser);
+}
+
+/** Remove the current user's avatar; returns the updated user. */
+export function deleteAvatar(): Promise<User> {
+  return apiFetch<UserResponse>(apiUrl("/users/me/avatar"), {
+    method: "DELETE",
+  }).then(mapUser);
+}
+
 /**
  * Change the password of the signed-in user.
  *

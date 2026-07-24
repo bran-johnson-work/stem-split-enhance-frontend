@@ -2,14 +2,21 @@
 // (lib/upload), Downloader (lib/download) and AudioSource (lib/audio): the UI
 // talks to this interface, so the storage mechanism can change underneath it.
 //
-// DEFERRED: the API exposes no avatar endpoint (UserResponse has no avatar
-// field), so the only implementation today keeps the image on the device —
-// downscaled to a 256px square and persisted as a data URL in localStorage.
-// When `POST /users/me/avatar` lands, add an `httpAvatarStore`, gate it on
-// USE_REAL_BACKEND here, and delete `localAvatarStore` + the overlay in
-// lib/api/auth.getCurrentUser. No component changes.
+// Two implementations, picked by USE_REAL_BACKEND:
+//   • httpAvatarStore — real backend. Uploads the image straight to S3 via a
+//     presigned POST (same transport as audio), then records it on the user;
+//     the avatar becomes a per-user signed URL on UserResponse.avatar_url.
+//   • localAvatarStore — no backend. Downscales to a 256px square and persists a
+//     data URL in localStorage (device-local; overlaid in lib/api/auth).
 
+import {
+  completeAvatarUpload,
+  deleteAvatar,
+  requestAvatarUploadUrl,
+} from "@/lib/api/users";
+import { USE_REAL_BACKEND } from "@/lib/config";
 import { formatBytes } from "@/lib/format";
+import { xhrUploadPost } from "@/lib/upload/upload-file";
 import type { FileValidation } from "@/lib/validations/upload";
 
 export interface AvatarStore {
@@ -106,4 +113,31 @@ export const localAvatarStore: AvatarStore = {
   },
 };
 
-export const avatarStore: AvatarStore = localAvatarStore;
+/**
+ * Real backend: upload the chosen image directly to S3 through a presigned POST,
+ * then finalise it on the user. Returns the fresh signed avatar URL the API
+ * hands back. The bytes never pass through our API, mirroring the audio upload.
+ */
+export const httpAvatarStore: AvatarStore = {
+  async upload(file: File) {
+    const check = validateAvatarFile(file);
+    if (!check.ok) throw new Error(check.error);
+
+    const signed = await requestAvatarUploadUrl(file.type);
+    await xhrUploadPost(signed.url, signed.fields, signed.storage_key, file, {
+      onProgress: () => {},
+      signal: new AbortController().signal,
+    });
+    const user = await completeAvatarUpload();
+    return user.avatarUrl ?? "";
+  },
+
+  async remove() {
+    await deleteAvatar();
+  },
+};
+
+/** The active store — real presigned upload when a backend is configured. */
+export const avatarStore: AvatarStore = USE_REAL_BACKEND
+  ? httpAvatarStore
+  : localAvatarStore;

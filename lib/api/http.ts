@@ -59,8 +59,9 @@ export class HttpApi implements KlearNoteApi {
       ? await usersApi.updateUser(me.id, body)
       : me;
 
-    // No avatar endpoint yet — the AvatarStore seam has already persisted the
-    // image on the device, so just reflect it in the user we hand back.
+    // The AvatarStore seam has already persisted the image (server-side, via the
+    // presigned-upload endpoints) and handed back its URL, so reflect it in the
+    // user we return for an immediate cache update.
     if (input.avatarUrl !== undefined) {
       user = { ...user, avatarUrl: input.avatarUrl ?? undefined };
     }
