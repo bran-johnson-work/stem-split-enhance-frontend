@@ -126,7 +126,7 @@ export function uploadGate(
       allowed: false,
       reason: "limit",
       title: "You've hit this month's upload limit",
-      body: `You've used all ${plan.uploadsPerMonth} uploads on ${plan.name} this month. Upgrade for more, or come back next month.`,
+      body: `You've uploaded all ${plan.uploadsPerMonth} audio files on ${plan.name} this month. Upgrade for more, or come back next month.`,
       cta: { label: "Upgrade plan", href: "/billing" },
     };
   }
