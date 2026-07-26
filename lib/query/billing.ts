@@ -80,6 +80,24 @@ export function useChangePlan() {
   );
 }
 
+/**
+ * Start a real Stripe Checkout (new subscription) and hand back the hosted URL.
+ * The caller redirects the browser there; the subscription is created + charged
+ * on Stripe and synced back by webhook, so there is nothing to cache here.
+ */
+export function useStartCheckout() {
+  return useMutation<{ url: string }, Error, ChangePlanInput>({
+    mutationFn: (input) => api.startCheckout(input),
+  });
+}
+
+/** Open the Stripe Customer Portal (manage card / change an existing plan). */
+export function useBillingPortal() {
+  return useMutation<{ url: string }, Error, void>({
+    mutationFn: () => api.openBillingPortal(),
+  });
+}
+
 export function useCancelSubscription() {
   return useSubscriptionMutation<void>(() => api.cancelSubscription());
 }

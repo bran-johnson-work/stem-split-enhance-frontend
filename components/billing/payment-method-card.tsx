@@ -30,14 +30,58 @@ export function PaymentMethodCard({
   paymentMethod,
   subscription,
   isLoading,
+  onManageBilling,
+  managing,
 }: {
   paymentMethod: PaymentMethod | null | undefined;
   subscription: Subscription;
   isLoading: boolean;
+  /** Real backend: open the Stripe Customer Portal to manage the card. When set,
+   *  the card is owned by Stripe and the in-app add/update/remove UI is hidden. */
+  onManageBilling?: () => void;
+  managing?: boolean;
 }) {
   const [cardOpen, setCardOpen] = React.useState(false);
   const [removeOpen, setRemoveOpen] = React.useState(false);
   const removeMethod = useRemovePaymentMethod();
+
+  // Real backend: cards are entered and managed on Stripe's own pages (Checkout
+  // + Customer Portal), never stored or shown here.
+  if (onManageBilling) {
+    const onPaidPlan = subscription.planId !== "free";
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment method</CardTitle>
+          <CardDescription>
+            Your card is stored securely by Stripe. Manage it in the billing
+            portal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-10 text-center">
+            <div className="bg-muted text-muted-foreground grid size-12 place-items-center rounded-xl">
+              <CreditCard className="size-6" aria-hidden />
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium">Managed by Stripe</p>
+              <p className="text-muted-foreground max-w-xs text-sm">
+                {onPaidPlan
+                  ? "Update your card, download receipts, or change your plan in the secure portal."
+                  : "Subscribe to a paid plan to add a card — checkout opens on Stripe."}
+              </p>
+            </div>
+            {onPaidPlan && (
+              <Button onClick={onManageBilling} disabled={managing}>
+                {managing && <Loader2 className="animate-spin" />}
+                Manage in Stripe
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Removing the card that's paying for an active plan would break the next
   // renewal, so the confirm step says so out loud.

@@ -170,32 +170,46 @@ export class HttpApi implements KlearNoteApi {
     return projectsApi.createProject(name).then(projectsApi.mapProject);
   }
 
-  // ---- Mostly mock — plans/subscription/payment method aren't wired yet ---
-  // Invoices (below) are real; the rest of billing still runs on MockApi until
-  // its endpoints are wired. Card *collection* is a separate concern — see the
-  // BillingGateway seam in lib/billing/billing-gateway.ts.
+  // ---- Billing: real Stripe (plans, subscription, checkout, portal) --------
+  // Plans + subscription are read from the API; subscribing is a Stripe Checkout
+  // redirect and managing an existing subscription is the Customer Portal — the
+  // card is entered on Stripe's pages, never here (so there is no in-app
+  // payment-method endpoint, and getPaymentMethod resolves null).
   getPlans(): Promise<Plan[]> {
-    return this.mock.getPlans();
+    return billingApi.getPlans();
   }
   getSubscription(): Promise<Subscription> {
-    return this.mock.getSubscription();
+    return billingApi.getSubscription();
   }
+  // changePlan is the mock's synchronous model; against the real backend a plan
+  // change goes through Checkout (new subscription) or the Portal (existing one),
+  // so it isn't wired to a route.
   changePlan(input: ChangePlanInput): Promise<Subscription> {
     return this.mock.changePlan(input);
   }
   cancelSubscription(): Promise<Subscription> {
-    return this.mock.cancelSubscription();
+    return billingApi.cancelSubscription();
   }
   resumeSubscription(): Promise<Subscription> {
-    return this.mock.resumeSubscription();
+    return billingApi.resumeSubscription();
   }
-  // Invoices are real (read live from Stripe), even though the rest of billing
-  // still runs on the mock — a paid user reaches this once they've checked out.
+  startCheckout(input: ChangePlanInput): Promise<{ url: string }> {
+    const interval = input.cycle;
+    return billingApi
+      .createCheckout(input.planId, interval)
+      .then((url) => ({ url }));
+  }
+  openBillingPortal(): Promise<{ url: string }> {
+    return billingApi.createPortalSession().then((url) => ({ url }));
+  }
+  // Invoices are real (read live from Stripe).
   listInvoices(): Promise<Invoice[]> {
     return billingApi.listInvoices();
   }
+  // No in-app card storage against the real backend — Stripe owns the card, shown
+  // and edited via the Customer Portal. Null renders the "manage in Stripe" state.
   getPaymentMethod(): Promise<PaymentMethod | null> {
-    return this.mock.getPaymentMethod();
+    return Promise.resolve(null);
   }
   attachPaymentMethod(token: CardToken): Promise<PaymentMethod> {
     return this.mock.attachPaymentMethod(token);

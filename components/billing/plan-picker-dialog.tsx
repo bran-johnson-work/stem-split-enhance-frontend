@@ -25,8 +25,13 @@ import {
   topAnnualDiscount,
   uploadsLabel,
 } from "@/lib/billing/plans";
+import { USE_REAL_BACKEND } from "@/lib/config";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { useChangePlan, usePaymentMethod } from "@/lib/hooks/queries";
+import {
+  useChangePlan,
+  usePaymentMethod,
+  useStartCheckout,
+} from "@/lib/hooks/queries";
 import type { BillingCycle, Plan, PlanId, Subscription } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +41,7 @@ export function PlanPickerDialog({
   plans,
   subscription,
   initialPlanId,
+  initialCycle,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,14 +49,19 @@ export function PlanPickerDialog({
   subscription: Subscription;
   /** Preselected on open — set by the `/billing?plan=pro` deep link from pricing. */
   initialPlanId?: PlanId;
+  /** Preselected billing cycle — the `&cycle=annual` the pricing toggle carried. */
+  initialCycle?: BillingCycle;
 }) {
   const changePlan = useChangePlan();
+  const startCheckout = useStartCheckout();
   const { data: paymentMethod } = usePaymentMethod();
 
   const [selectedId, setSelectedId] = React.useState<PlanId>(
     initialPlanId ?? subscription.planId,
   );
-  const [cycle, setCycle] = React.useState<BillingCycle>(subscription.cycle);
+  const [cycle, setCycle] = React.useState<BillingCycle>(
+    initialCycle ?? subscription.cycle,
+  );
 
   // Re-seed each time it opens, so a dismissed picker doesn't remember a
   // selection the user walked away from. Adjusted during render rather than in
@@ -61,7 +72,7 @@ export function PlanPickerDialog({
     setWasOpen(open);
     if (open) {
       setSelectedId(initialPlanId ?? subscription.planId);
-      setCycle(subscription.cycle);
+      setCycle(initialCycle ?? subscription.cycle);
     }
   }
 
@@ -70,15 +81,33 @@ export function PlanPickerDialog({
   const change = planChange(subscription, { planId: selectedId, cycle });
   const discount = topAnnualDiscount(plans);
 
-  // A paid plan needs a card. Say so up front rather than letting the mutation
-  // fail with a toast.
+  // Against the real backend the card is collected on Stripe's Checkout page, so
+  // there's no in-app card to gate on. In mock mode a paid plan still needs one.
   const needsCard = Boolean(
-    selected && selected.priceMonthly > 0 && !paymentMethod,
+    !USE_REAL_BACKEND && selected && selected.priceMonthly > 0 && !paymentMethod,
   );
-  const canConfirm = change !== "none" && !needsCard && !changePlan.isPending;
+  const pending = changePlan.isPending || startCheckout.isPending;
+  const canConfirm = change !== "none" && !needsCard && !pending;
 
   async function handleConfirm() {
     if (!selected || !canConfirm) return;
+
+    // Real backend: subscribing to a paid plan is a Stripe Checkout redirect —
+    // Stripe takes the card, charges the first invoice, and creates the
+    // subscription; our webhook syncs it on return. (Free is the mock path.)
+    if (USE_REAL_BACKEND && selected.priceMonthly > 0) {
+      try {
+        const { url } = await startCheckout.mutateAsync({ planId: selectedId, cycle });
+        // Leave the dialog open — we're navigating away to Stripe.
+        window.location.href = url;
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Couldn't start checkout.",
+        );
+      }
+      return;
+    }
+
     try {
       await changePlan.mutateAsync({ planId: selectedId, cycle });
       onOpenChange(false);
@@ -168,7 +197,7 @@ export function PlanPickerDialog({
               Cancel
             </Button>
             <Button onClick={handleConfirm} disabled={!canConfirm}>
-              {changePlan.isPending && <Loader2 className="animate-spin" />}
+              {pending && <Loader2 className="animate-spin" />}
               {change === "downgrade" ? "Schedule change" : "Confirm upgrade"}
             </Button>
           </div>

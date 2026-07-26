@@ -66,11 +66,12 @@ export function PricingPlans() {
               // annual charge moves to a sub-line.
               const headline = monthlyEquivalent(plan, cycle);
               const savings = annualSavings(plan);
-              // Signed-in visitors go straight to the plan picker on /billing;
-              // everyone else has to sign up first.
+              // Signed-in visitors go straight to the plan picker on /billing,
+              // carrying the cycle they toggled so it isn't lost (annual vs
+              // monthly changes what checkout charges); everyone else signs up first.
               const href =
                 isAuthenticated && !isFree
-                  ? `/billing?plan=${plan.id}`
+                  ? `/billing?plan=${plan.id}&cycle=${cycle}`
                   : "/signup";
 
               return (

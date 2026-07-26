@@ -59,6 +59,14 @@ export interface KlearNoteApi {
   cancelSubscription(): Promise<Subscription>;
   /** Undo a scheduled cancellation or downgrade. */
   resumeSubscription(): Promise<Subscription>;
+  /**
+   * Begin a real Stripe Checkout for a new subscription; resolves to the hosted
+   * URL the caller must redirect the browser to. Real backend only — the mock
+   * has no Stripe and applies plan changes synchronously via `changePlan`.
+   */
+  startCheckout(input: ChangePlanInput): Promise<{ url: string }>;
+  /** Open the Stripe Customer Portal (manage card / change an existing plan). */
+  openBillingPortal(): Promise<{ url: string }>;
   listInvoices(): Promise<Invoice[]>;
   /** The card on file, or `null` when there isn't one. */
   getPaymentMethod(): Promise<PaymentMethod | null>;
@@ -276,6 +284,17 @@ export class MockApi implements KlearNoteApi {
     delete sub.cancelAtPeriodEnd;
     delete sub.scheduledChange;
     return clone(sub);
+  }
+
+  // Stripe-only flows. In fully-mock mode the UI never calls these (it branches
+  // on USE_REAL_BACKEND and uses changePlan instead); implemented so the contract
+  // is total and any accidental call fails loudly rather than silently no-op'ing.
+  async startCheckout(): Promise<{ url: string }> {
+    throw new Error("Checkout is only available against the real backend.");
+  }
+
+  async openBillingPortal(): Promise<{ url: string }> {
+    throw new Error("The billing portal is only available against the real backend.");
   }
 
   async listInvoices() {

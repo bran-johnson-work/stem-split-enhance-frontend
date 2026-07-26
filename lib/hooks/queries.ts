@@ -19,6 +19,8 @@ export {
   useResumeSubscription,
   useSavePaymentMethod,
   useRemovePaymentMethod,
+  useStartCheckout,
+  useBillingPortal,
 } from "@/lib/query/billing";
 export { useAdminUsers, useAdminProjects } from "@/lib/query/admin";
 

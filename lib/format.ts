@@ -38,13 +38,21 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-/** An absolute date, e.g. "Aug 1, 2026". */
-export function formatDate(iso: string): string {
+/**
+ * An absolute date, e.g. "Aug 1, 2026". Returns "" for a missing/invalid input
+ * rather than throwing — a free/Trial subscription has no renewal date, so its
+ * `renewsAt` is empty, and `Intl.DateTimeFormat.format(new Date(""))` would raise
+ * `RangeError: Invalid time value` and take the whole page down.
+ */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
-  }).format(new Date(iso));
+  }).format(date);
 }
 
 export function formatRelative(iso: string): string {
