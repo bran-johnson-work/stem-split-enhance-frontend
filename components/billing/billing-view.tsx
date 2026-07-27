@@ -41,9 +41,8 @@ export function BillingView() {
   const { data: paymentMethod, isLoading: pmLoading } = usePaymentMethod();
   const portal = useBillingPortal();
 
-  // Real backend: an existing paid subscriber changes/cancels their plan in the
-  // Stripe Customer Portal (a fresh Checkout would create a *second*
-  // subscription). Free users go to the in-app picker, which starts Checkout.
+  // The Stripe Customer Portal is now only for managing the saved card /
+  // receipts (PaymentMethodCard). Plan changes happen in-app — see below.
   async function openPortal() {
     try {
       const { url } = await portal.mutateAsync();
@@ -55,11 +54,8 @@ export function BillingView() {
     }
   }
 
+
   function handleChangePlan() {
-    if (USE_REAL_BACKEND && subscription && subscription.planId !== "free") {
-      void openPortal();
-      return;
-    }
     setPickerOpen(true);
   }
 

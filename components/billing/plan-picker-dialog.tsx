@@ -19,6 +19,7 @@ import {
   annualSavings,
   findPlan,
   monthlyEquivalent,
+  type PlanChange,
   planChange,
   priceFor,
   sortPlans,
@@ -28,6 +29,7 @@ import {
 import { USE_REAL_BACKEND } from "@/lib/config";
 import { formatCurrency, formatDate } from "@/lib/format";
 import {
+  useCancelSubscription,
   useChangePlan,
   usePaymentMethod,
   useStartCheckout,
@@ -54,6 +56,7 @@ export function PlanPickerDialog({
 }) {
   const changePlan = useChangePlan();
   const startCheckout = useStartCheckout();
+  const cancel = useCancelSubscription();
   const { data: paymentMethod } = usePaymentMethod();
 
   const [selectedId, setSelectedId] = React.useState<PlanId>(
@@ -86,28 +89,70 @@ export function PlanPickerDialog({
   const needsCard = Boolean(
     !USE_REAL_BACKEND && selected && selected.priceMonthly > 0 && !paymentMethod,
   );
-  const pending = changePlan.isPending || startCheckout.isPending;
+  const pending = changePlan.isPending || startCheckout.isPending || cancel.isPending;
   const canConfirm = change !== "none" && !needsCard && !pending;
+
+  // Which transport a confirmation uses against the real backend. Moving *to* the
+  // free plan is a cancellation (no Stripe price to swap to); a user with no paid
+  // subscription yet must go through Checkout to enter a card; everyone else swaps
+  // their existing subscription's price in place.
+  const currentlyPaid = subscription.planId !== "free";
+  const selectingFree = Boolean(selected && selected.priceMonthly === 0);
+  const isNewSubscription = USE_REAL_BACKEND && !currentlyPaid && !selectingFree;
 
   async function handleConfirm() {
     if (!selected || !canConfirm) return;
 
-    // Real backend: subscribing to a paid plan is a Stripe Checkout redirect —
-    // Stripe takes the card, charges the first invoice, and creates the
-    // subscription; our webhook syncs it on return. (Free is the mock path.)
-    if (USE_REAL_BACKEND && selected.priceMonthly > 0) {
+    if (USE_REAL_BACKEND) {
+      // Downgrade to Free = cancel at period end; the paid plan runs to term.
+      if (selectingFree) {
+        try {
+          await cancel.mutateAsync();
+          onOpenChange(false);
+          toast.success(
+            `You'll move to Free on ${formatDate(subscription.renewsAt)}. You keep everything until then.`,
+          );
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Couldn't schedule the change.",
+          );
+        }
+        return;
+      }
+
+      // No paid subscription yet → Stripe Checkout takes the card, charges the
+      // first invoice, and creates the subscription; our webhook syncs on return.
+      if (isNewSubscription) {
+        try {
+          const { url } = await startCheckout.mutateAsync({ planId: selectedId, cycle });
+          // Leave the dialog open — we're navigating away to Stripe.
+          window.location.href = url;
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Couldn't start checkout.",
+          );
+        }
+        return;
+      }
+
+      // Existing paid subscription → swap the plan/cadence in place (prorated).
       try {
-        const { url } = await startCheckout.mutateAsync({ planId: selectedId, cycle });
-        // Leave the dialog open — we're navigating away to Stripe.
-        window.location.href = url;
+        await changePlan.mutateAsync({ planId: selectedId, cycle });
+        onOpenChange(false);
+        toast.success(
+          change === "upgrade"
+            ? `You're on ${selected.name} — enjoy.`
+            : `You've switched to ${selected.name}.`,
+        );
       } catch (err) {
         toast.error(
-          err instanceof Error ? err.message : "Couldn't start checkout.",
+          err instanceof Error ? err.message : "Couldn't change your plan.",
         );
       }
       return;
     }
 
+    // Mock backend: changePlan applies the whole thing synchronously.
     try {
       await changePlan.mutateAsync({ planId: selectedId, cycle });
       onOpenChange(false);
@@ -129,8 +174,19 @@ export function PlanPickerDialog({
         <DialogHeader>
           <DialogTitle>Change your plan</DialogTitle>
           <DialogDescription>
-            Upgrades start immediately and we prorate what you&apos;ve already
-            paid. Downgrades take effect at the end of your billing period.
+            {USE_REAL_BACKEND ? (
+              <>
+                Changes apply right away and we prorate the difference — an
+                upgrade is billed now, a downgrade is credited to your next
+                invoice. Switching to Free keeps your plan until the period ends.
+              </>
+            ) : (
+              <>
+                Upgrades start immediately and we prorate what you&apos;ve
+                already paid. Downgrades take effect at the end of your billing
+                period.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -179,18 +235,14 @@ export function PlanPickerDialog({
 
         <DialogFooter className="mt-6 sm:items-center sm:justify-between">
           <p className="text-muted-foreground text-sm sm:mr-auto">
-            {selected && change !== "none" ? (
-              change === "upgrade" ? (
-                <>
-                  Billed {formatCurrency(priceFor(selected, cycle))} today,
-                  prorated.
-                </>
-              ) : (
-                <>Starts on {formatDate(subscription.renewsAt)}. No charge now.</>
-              )
-            ) : (
-              "This is your current plan."
-            )}
+            <ChangeSummary
+              selected={selected}
+              change={change}
+              cycle={cycle}
+              renewsAt={subscription.renewsAt}
+              selectingFree={selectingFree}
+              isNewSubscription={isNewSubscription}
+            />
           </p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -198,13 +250,79 @@ export function PlanPickerDialog({
             </Button>
             <Button onClick={handleConfirm} disabled={!canConfirm}>
               {pending && <Loader2 className="animate-spin" />}
-              {change === "downgrade" ? "Schedule change" : "Confirm upgrade"}
+              <ConfirmLabel
+                change={change}
+                selectingFree={selectingFree}
+                isNewSubscription={isNewSubscription}
+              />
             </Button>
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+/** The one-line "what happens when you confirm" note under the plan grid. */
+function ChangeSummary({
+  selected,
+  change,
+  cycle,
+  renewsAt,
+  selectingFree,
+  isNewSubscription,
+}: {
+  selected: Plan | undefined;
+  change: PlanChange;
+  cycle: BillingCycle;
+  renewsAt: string;
+  selectingFree: boolean;
+  isNewSubscription: boolean;
+}) {
+  if (!selected || change === "none") return <>This is your current plan.</>;
+
+  if (USE_REAL_BACKEND) {
+    if (selectingFree) {
+      return <>Your plan runs until {formatDate(renewsAt)}, then moves to Free.</>;
+    }
+    if (isNewSubscription) {
+      return (
+        <>
+          You&apos;ll enter your card on Stripe&apos;s secure checkout —{" "}
+          {formatCurrency(priceFor(selected, cycle))} to start.
+        </>
+      );
+    }
+    return change === "upgrade" ? (
+      <>Billed the prorated difference today.</>
+    ) : (
+      <>Applies now — we credit the difference to your next invoice.</>
+    );
+  }
+
+  return change === "upgrade" ? (
+    <>Billed {formatCurrency(priceFor(selected, cycle))} today, prorated.</>
+  ) : (
+    <>Starts on {formatDate(renewsAt)}. No charge now.</>
+  );
+}
+
+/** The confirm button's label, which mirrors the action the confirm will take. */
+function ConfirmLabel({
+  change,
+  selectingFree,
+  isNewSubscription,
+}: {
+  change: PlanChange;
+  selectingFree: boolean;
+  isNewSubscription: boolean;
+}) {
+  if (USE_REAL_BACKEND) {
+    if (selectingFree) return <>Switch to Free</>;
+    if (isNewSubscription) return <>Continue to checkout</>;
+    return change === "downgrade" ? <>Confirm change</> : <>Confirm upgrade</>;
+  }
+  return change === "downgrade" ? <>Schedule change</> : <>Confirm upgrade</>;
 }
 
 function PlanOption({

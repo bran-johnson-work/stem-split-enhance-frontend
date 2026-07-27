@@ -1,9 +1,4 @@
-// Real backend implementation of the KlearNoteApi contract. Wired to real
-// endpoints: current user, project list/get/create, jobs, and invoices (read
-// live from Stripe). The rest of billing (plans, subscription, payment method)
-// and admin are still delegated to MockApi, so those screens keep working until
-// their endpoints are wired. Swapped in for MockApi by lib/api/index.ts when
-// NEXT_PUBLIC_API_URL is set.
+
 
 import { getCurrentUser, requestEmailVerification } from "@/lib/api/auth";
 import * as billingApi from "@/lib/api/billing";
@@ -94,9 +89,7 @@ export class HttpApi implements KlearNoteApi {
     const search = (params?.search ?? "").trim().toLowerCase();
     const status = params?.status;
 
-    // The API has no search/status params, so we fetch a window and filter +
-    // page-slice client-side — same discipline as the mock, keeping `total`
-    // and pagination correct across the filtered set.
+
     const all = await projectsApi.listProjects(0, LIST_WINDOW);
     let filtered = all;
     if (status && status.length) {
@@ -114,23 +107,10 @@ export class HttpApi implements KlearNoteApi {
     };
   }
 
-  /**
-   * A project plus the live detail its own endpoint doesn't carry.
-   *
-   * `ProjectResponse` reports a coarse status and no progress at all, so the
-   * detail view composes in the project's latest processing job (real progress
-   * + the worker's current step) and, once that job is finished, its stems.
-   * Doing it here means every consumer — the stepper, the progress bar, the
-   * delivery panel — keeps reading a plain `Project` and needs no changes.
-   *
-   * Deliberately *not* done in `listProjects`: that would be one extra request
-   * per row (N+1) to fill a progress bar the list only shows coarsely.
-   */
   async getProject(id: string): Promise<Project> {
     const project = await projectsApi.getProject(id);
 
-    // A project is job-less between upload-complete and the worker claiming it;
-    // a missing job is normal, not an error, so it must not fail the detail view.
+
     const job = await jobsApi.getLatestJob(id).catch(() => null);
     if (!job) return project;
 
@@ -138,9 +118,6 @@ export class HttpApi implements KlearNoteApi {
       ...project,
       progress: job.progress,
       currentStep: job.currentStep,
-      // The project's own terminal status wins — it is the authoritative record
-      // of completion. Mid-flight, the finer stage is derived from real progress
-      // so the stepper advances instead of sitting on "analyzing".
       status: isTerminal(project.status)
         ? project.status
         : statusForProgress(job.progress),
@@ -149,8 +126,6 @@ export class HttpApi implements KlearNoteApi {
 
     if (project.status !== "completed" || !job.isFinished) return merged;
 
-    // Signed stem URLs are short-lived, so they're fetched only once the project
-    // is complete — the point at which detail polling has already stopped.
     const stems = await jobsApi.getJobStems(id, job.id).catch(() => []);
     return stems.length ? { ...merged, stems } : merged;
   }
@@ -164,26 +139,18 @@ export class HttpApi implements KlearNoteApi {
     return projectsApi.mapProject(res);
   }
 
-  // Create an empty project up front (the "create project first" upload flow);
-  // files are uploaded into it via the presigned-URL batch.
   createEmptyProject(name: string): Promise<Project> {
     return projectsApi.createProject(name).then(projectsApi.mapProject);
   }
 
-  // ---- Billing: real Stripe (plans, subscription, checkout, portal) --------
-  // Plans + subscription are read from the API; subscribing is a Stripe Checkout
-  // redirect and managing an existing subscription is the Customer Portal — the
-  // card is entered on Stripe's pages, never here (so there is no in-app
-  // payment-method endpoint, and getPaymentMethod resolves null).
+
   getPlans(): Promise<Plan[]> {
     return billingApi.getPlans();
   }
   getSubscription(): Promise<Subscription> {
     return billingApi.getSubscription();
   }
-  // changePlan is the mock's synchronous model; against the real backend a plan
-  // change goes through Checkout (new subscription) or the Portal (existing one),
-  // so it isn't wired to a route.
+
   changePlan(input: ChangePlanInput): Promise<Subscription> {
     return this.mock.changePlan(input);
   }
@@ -191,7 +158,7 @@ export class HttpApi implements KlearNoteApi {
     return billingApi.cancelSubscription();
   }
   resumeSubscription(): Promise<Subscription> {
-    return billingApi.resumeSubscription();
+    return this.mock.resumeSubscription();
   }
   startCheckout(input: ChangePlanInput): Promise<{ url: string }> {
     const interval = input.cycle;
@@ -206,8 +173,7 @@ export class HttpApi implements KlearNoteApi {
   listInvoices(): Promise<Invoice[]> {
     return billingApi.listInvoices();
   }
-  // No in-app card storage against the real backend — Stripe owns the card, shown
-  // and edited via the Customer Portal. Null renders the "manage in Stripe" state.
+
   getPaymentMethod(): Promise<PaymentMethod | null> {
     return Promise.resolve(null);
   }

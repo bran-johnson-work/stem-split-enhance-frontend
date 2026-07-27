@@ -173,9 +173,26 @@ export async function createCheckout(
 }
 
 /**
- * Open the Stripe Customer Portal (manage card, switch/cancel an existing paid
- * plan). 400s for a user with no billing account yet — subscribe via Checkout
- * first.
+ * Change an *existing* subscription to another plan/cadence, in place. Unlike
+ * checkout this never creates a second subscription — the API swaps the price on
+ * the live Stripe subscription and prorates (upgrades billed now, downgrades
+ * credited to the next invoice), then returns the fresh subscription state.
+ */
+export async function changePlan(
+  planName: PlanId,
+  interval: BillingCycle,
+): Promise<Subscription> {
+  const res = await apiFetch<SubscriptionResponse>(apiUrl("/billing/change-plan"), {
+    method: "POST",
+    json: { plan_name: planName, interval },
+  });
+  return mapSubscription(res);
+}
+
+/**
+ * Open the Stripe Customer Portal (manage card, download receipts). Plan changes
+ * are handled in-app via {@link changePlan}; the portal remains the place to
+ * update the saved card. 400s for a user with no billing account yet.
  */
 export async function createPortalSession(): Promise<string> {
   const res = await apiFetch<{ portal_url: string }>(apiUrl("/billing/portal"), {

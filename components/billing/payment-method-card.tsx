@@ -67,7 +67,7 @@ export function PaymentMethodCard({
               <p className="font-medium">Managed by Stripe</p>
               <p className="text-muted-foreground max-w-xs text-sm">
                 {onPaidPlan
-                  ? "Update your card, download receipts, or change your plan in the secure portal."
+                  ? "Update your card or download receipts in the secure portal. Change your plan right here on this page."
                   : "Subscribe to a paid plan to add a card — checkout opens on Stripe."}
               </p>
             </div>
