@@ -22,7 +22,13 @@ export {
   useStartCheckout,
   useBillingPortal,
 } from "@/lib/query/billing";
-export { useAdminUsers, useAdminProjects } from "@/lib/query/admin";
+export {
+  useAdminUsers,
+  useAdminProjects,
+  useAdminOverview,
+  useAdminRevenue,
+  useAdminTrends,
+} from "@/lib/query/admin";
 
 // The query key factory moved to lib/query/keys; re-exported here so existing
 // `import { queryKeys } from "@/lib/hooks/queries"` call sites keep resolving.

@@ -37,5 +37,9 @@ export const queryKeys = {
     all: ["admin"] as const,
     users: () => [...queryKeys.admin.all, "users"] as const,
     projects: () => [...queryKeys.admin.all, "projects"] as const,
+    overview: () => [...queryKeys.admin.all, "overview"] as const,
+    revenue: () => [...queryKeys.admin.all, "revenue"] as const,
+    // Keyed by window so a 7-day and 30-day view cache independently.
+    trends: (days: number) => [...queryKeys.admin.all, "trends", days] as const,
   },
 } as const;

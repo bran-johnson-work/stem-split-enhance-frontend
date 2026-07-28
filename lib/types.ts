@@ -178,15 +178,78 @@ export interface NotificationPrefs {
   productUpdates: boolean;
 }
 
-export interface AdminUserRow {
+// A user row for the admin directory. Mirrors the backend `UserResponse` (GET
+// /admin/users) — the admin API is read-only, so there is no plan/project-count
+// join here; `isActive`/`isVerified` are the account-state flags the backend
+// actually exposes.
+export interface AdminUser {
   id: string;
   name: string;
   email: string;
   role: UserRole;
-  planId: PlanId;
-  projectCount: number;
-  status: "active" | "suspended";
+  isActive: boolean;
+  isVerified: boolean;
+  avatarUrl?: string;
   createdAt: string;
+}
+
+// The backend project lifecycle (raw `ProjectStatus` enum values). Distinct from
+// the app's finer client-side `ProjectStatus` — the admin monitor shows the
+// authoritative server status verbatim, no collapsing.
+export type AdminProjectStatus =
+  | "pending"
+  | "uploading"
+  | "queued"
+  | "processing"
+  | "completed"
+  | "failed";
+
+// Admin-facing view of any project (GET /admin/projects). Carries the owner's
+// email and output availability, which a normal project response does not.
+export interface AdminProject {
+  id: string;
+  userId: string;
+  ownerEmail: string;
+  name: string;
+  status: AdminProjectStatus;
+  outputFileCount: number;
+  hasOutputs: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// --- Admin dashboard statistics -------------------------------------------
+// Platform-wide aggregates from GET /admin/stats/*. Money is in whole dollars
+// (major units) to match formatCurrency — the backend sends cents and the
+// mapper in lib/api/admin divides by 100. `byStatus` is keyed by the backend's
+// lowercase status values, every status present (zero-filled server-side).
+
+export interface AdminOverview {
+  users: { total: number; active: number; verified: number; admins: number };
+  projects: { total: number; byStatus: Record<string, number> };
+  jobs: { total: number; byStatus: Record<string, number> };
+  subscriptions: { total: number; active: number; byStatus: Record<string, number> };
+}
+
+export interface AdminPlanRevenue {
+  planName: string;
+  displayName: string;
+  activeSubscriptions: number;
+  mrr: number; // dollars
+}
+
+export interface AdminRevenue {
+  mrr: number; // dollars
+  arr: number; // dollars
+  activePaidSubscriptions: number;
+  currency: string;
+  byPlan: AdminPlanRevenue[];
+}
+
+export interface AdminTrendPoint {
+  date: string; // ISO calendar date, YYYY-MM-DD
+  signups: number;
+  projectsCreated: number;
 }
 
 export interface Paginated<T> {

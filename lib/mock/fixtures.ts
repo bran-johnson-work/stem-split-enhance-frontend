@@ -1,5 +1,10 @@
 import type {
-  AdminUserRow,
+  AdminOverview,
+  AdminProject,
+  AdminProjectStatus,
+  AdminRevenue,
+  AdminTrendPoint,
+  AdminUser,
   Invoice,
   PaymentMethod,
   Plan,
@@ -287,15 +292,14 @@ export const BILLING_STATE: { paymentMethod: PaymentMethod | null } = {
   paymentMethod: null,
 };
 
-export const ADMIN_USERS: AdminUserRow[] = [
+export const ADMIN_USERS: AdminUser[] = [
   {
     id: "u_1",
     name: "Alfie Martin",
     email: "amart@klearnote.ai",
     role: "admin",
-    planId: "pro",
-    projectCount: 12,
-    status: "active",
+    isActive: true,
+    isVerified: true,
     createdAt: iso(120 * DAY),
   },
   {
@@ -303,9 +307,8 @@ export const ADMIN_USERS: AdminUserRow[] = [
     name: "Dakota Reyes",
     email: "dakota@klearnote.ai",
     role: "admin",
-    planId: "studio",
-    projectCount: 31,
-    status: "active",
+    isActive: true,
+    isVerified: true,
     createdAt: iso(110 * DAY),
   },
   {
@@ -313,9 +316,8 @@ export const ADMIN_USERS: AdminUserRow[] = [
     name: "Jordan Blake",
     email: "jordan@example.com",
     role: "user",
-    planId: "creator",
-    projectCount: 7,
-    status: "active",
+    isActive: true,
+    isVerified: true,
     createdAt: iso(40 * DAY),
   },
   {
@@ -323,9 +325,93 @@ export const ADMIN_USERS: AdminUserRow[] = [
     name: "Sam Okafor",
     email: "sam@example.com",
     role: "user",
-    planId: "free",
-    projectCount: 2,
-    status: "suspended",
+    isActive: false,
+    isVerified: false,
     createdAt: iso(9 * DAY),
   },
 ];
+
+// Admin project rows for mock mode — derived from PROJECTS so the monitor looks
+// alive without a backend. The app's finer client statuses collapse back onto
+// the backend `AdminProjectStatus` the real endpoint would send.
+const ADMIN_STATUS_FROM_PROJECT: Record<Project["status"], AdminProjectStatus> = {
+  queued: "queued",
+  analyzing: "processing",
+  separating: "processing",
+  cleaning: "processing",
+  mastering: "processing",
+  completed: "completed",
+  failed: "failed",
+};
+
+export const ADMIN_PROJECTS: AdminProject[] = PROJECTS.map((p) => ({
+  id: p.id,
+  userId: CURRENT_USER.id,
+  ownerEmail: CURRENT_USER.email,
+  name: p.title,
+  status: ADMIN_STATUS_FROM_PROJECT[p.status],
+  outputFileCount: p.stems.length,
+  hasOutputs: p.stems.length > 0,
+  createdAt: p.createdAt,
+  updatedAt: p.updatedAt,
+}));
+
+// --- Admin dashboard stats (mock GET /admin/stats/*) ----------------------
+// Plausible platform aggregates so the admin dashboard looks alive with no
+// backend. Money is in whole dollars, matching the mapped domain type.
+
+export const ADMIN_OVERVIEW: AdminOverview = {
+  users: { total: 1284, active: 1197, verified: 1120, admins: 2 },
+  projects: {
+    total: 3921,
+    byStatus: {
+      pending: 14,
+      uploading: 6,
+      queued: 22,
+      processing: 9,
+      completed: 3798,
+      failed: 72,
+    },
+  },
+  jobs: {
+    total: 3905,
+    byStatus: { pending: 22, processing: 9, completed: 3802, failed: 72 },
+  },
+  subscriptions: {
+    total: 486,
+    active: 431,
+    byStatus: {
+      trialing: 38,
+      active: 431,
+      past_due: 9,
+      cancelled: 6,
+      incomplete: 2,
+      incomplete_expired: 0,
+    },
+  },
+};
+
+export const ADMIN_REVENUE: AdminRevenue = {
+  mrr: 6187,
+  arr: 74244,
+  activePaidSubscriptions: 393,
+  currency: "usd",
+  byPlan: [
+    { planName: "pro", displayName: "Pro", activeSubscriptions: 168, mrr: 3360 },
+    { planName: "studio", displayName: "Studio", activeSubscriptions: 61, mrr: 2379 },
+    { planName: "creator", displayName: "Creator", activeSubscriptions: 164, mrr: 1640 },
+    { planName: "free", displayName: "Free", activeSubscriptions: 38, mrr: 0 },
+  ],
+};
+
+/** 30 days of deterministic-but-organic signup/creation activity, ending today. */
+export const ADMIN_TRENDS: AdminTrendPoint[] = Array.from({ length: 30 }, (_, i) => {
+  const daysAgo = 29 - i;
+  const date = new Date(now - daysAgo * DAY).toISOString().slice(0, 10);
+  // A gentle wave + weekly dip so the chart reads like real traffic.
+  const wave = Math.sin(i / 3) * 4;
+  const weekend = i % 7 === 5 || i % 7 === 6 ? 0.5 : 1;
+  const signups = Math.max(0, Math.round((10 + wave) * weekend));
+  const projectsCreated = Math.max(0, Math.round((26 + wave * 2) * weekend));
+  return { date, signups, projectsCreated };
+});

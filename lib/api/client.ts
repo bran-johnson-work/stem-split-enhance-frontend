@@ -1,5 +1,9 @@
 import { planChange, priceFor } from "@/lib/billing/plans";
 import {
+  ADMIN_OVERVIEW,
+  ADMIN_PROJECTS,
+  ADMIN_REVENUE,
+  ADMIN_TRENDS,
   ADMIN_USERS,
   BILLING_STATE,
   CURRENT_USER,
@@ -8,7 +12,11 @@ import {
   PROJECTS,
 } from "@/lib/mock/fixtures";
 import type {
-  AdminUserRow,
+  AdminOverview,
+  AdminProject,
+  AdminRevenue,
+  AdminTrendPoint,
+  AdminUser,
   CardToken,
   ChangePasswordInput,
   ChangePlanInput,
@@ -73,8 +81,14 @@ export interface KlearNoteApi {
   /** Attach a card collected by the BillingGateway (lib/billing), replacing any existing one. */
   attachPaymentMethod(token: CardToken): Promise<PaymentMethod>;
   removePaymentMethod(): Promise<void>;
-  adminListUsers(): Promise<AdminUserRow[]>;
-  adminListProjects(): Promise<Project[]>;
+  adminListUsers(): Promise<AdminUser[]>;
+  adminListProjects(): Promise<AdminProject[]>;
+  /** Platform-wide counts for the admin overview dashboard. */
+  adminOverview(): Promise<AdminOverview>;
+  /** Recurring revenue (MRR/ARR + per-plan) from active subscriptions. */
+  adminRevenue(): Promise<AdminRevenue>;
+  /** Daily signups + project creations over the last `days`. */
+  adminTrends(days: number): Promise<AdminTrendPoint[]>;
 }
 
 const delay = (ms = 350) => new Promise((r) => setTimeout(r, ms));
@@ -334,6 +348,22 @@ export class MockApi implements KlearNoteApi {
 
   async adminListProjects() {
     await delay(300);
-    return clone(PROJECTS);
+    return clone(ADMIN_PROJECTS);
+  }
+
+  async adminOverview() {
+    await delay(300);
+    return clone(ADMIN_OVERVIEW);
+  }
+
+  async adminRevenue() {
+    await delay(300);
+    return clone(ADMIN_REVENUE);
+  }
+
+  async adminTrends(days: number) {
+    await delay(300);
+    // Mirror the backend's window semantics: the last `days` points.
+    return clone(ADMIN_TRENDS.slice(-days));
   }
 }

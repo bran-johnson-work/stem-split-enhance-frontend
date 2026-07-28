@@ -19,6 +19,21 @@ export const adminQueries = {
       queryKey: queryKeys.admin.projects(),
       queryFn: () => api.adminListProjects(),
     }),
+  overview: () =>
+    queryOptions({
+      queryKey: queryKeys.admin.overview(),
+      queryFn: () => api.adminOverview(),
+    }),
+  revenue: () =>
+    queryOptions({
+      queryKey: queryKeys.admin.revenue(),
+      queryFn: () => api.adminRevenue(),
+    }),
+  trends: (days: number) =>
+    queryOptions({
+      queryKey: queryKeys.admin.trends(days),
+      queryFn: () => api.adminTrends(days),
+    }),
 };
 
 export function useAdminUsers() {
@@ -27,4 +42,16 @@ export function useAdminUsers() {
 
 export function useAdminProjects() {
   return useQuery(adminQueries.projects());
+}
+
+export function useAdminOverview() {
+  return useQuery(adminQueries.overview());
+}
+
+export function useAdminRevenue() {
+  return useQuery(adminQueries.revenue());
+}
+
+export function useAdminTrends(days: number) {
+  return useQuery(adminQueries.trends(days));
 }

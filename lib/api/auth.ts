@@ -68,7 +68,11 @@ export function mapUser(u: UserResponse): User {
     id: u.id,
     name: u.full_name?.trim() || u.email.split("@")[0],
     email: u.email,
-    role: u.role,
+    // The backend's `UserRole` enum serializes uppercase ("ADMIN"/"USER"), but
+    // the whole app compares against lowercase ("admin"/"user" — see the sidebar
+    // and admin guard). Normalize here at the single ingest point so admins keep
+    // their Admin nav instead of silently losing every gated action.
+    role: u.role.toLowerCase() as UserRole,
     createdAt: u.created_at,
     avatarUrl: u.avatar_url ?? undefined,
     subscription: CURRENT_USER.subscription,

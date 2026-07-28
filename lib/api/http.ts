@@ -1,5 +1,6 @@
 
 
+import * as adminApi from "@/lib/api/admin";
 import { getCurrentUser, requestEmailVerification } from "@/lib/api/auth";
 import * as billingApi from "@/lib/api/billing";
 import { MockApi, type KlearNoteApi } from "@/lib/api/client";
@@ -8,7 +9,11 @@ import * as projectsApi from "@/lib/api/projects";
 import * as usersApi from "@/lib/api/users";
 import { isTerminal, statusForProgress } from "@/lib/processing/pipeline";
 import type {
-  AdminUserRow,
+  AdminOverview,
+  AdminProject,
+  AdminRevenue,
+  AdminTrendPoint,
+  AdminUser,
   CardToken,
   ChangePasswordInput,
   ChangePlanInput,
@@ -183,10 +188,20 @@ export class HttpApi implements KlearNoteApi {
   removePaymentMethod(): Promise<void> {
     return this.mock.removePaymentMethod();
   }
-  adminListUsers(): Promise<AdminUserRow[]> {
-    return this.mock.adminListUsers();
+  adminListUsers(): Promise<AdminUser[]> {
+    return adminApi.adminListUsers();
   }
-  adminListProjects(): Promise<Project[]> {
-    return this.mock.adminListProjects();
+  adminListProjects(): Promise<AdminProject[]> {
+    return adminApi.adminListProjects();
+  }
+  // Stats are real (aggregated server-side under GET /admin/stats/*).
+  adminOverview(): Promise<AdminOverview> {
+    return adminApi.adminOverview();
+  }
+  adminRevenue(): Promise<AdminRevenue> {
+    return adminApi.adminRevenue();
+  }
+  adminTrends(days: number): Promise<AdminTrendPoint[]> {
+    return adminApi.adminTrends(days);
   }
 }
