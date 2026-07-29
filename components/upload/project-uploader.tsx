@@ -22,12 +22,15 @@ import type { Plan, Project } from "@/lib/types";
 export function ProjectUploader({
   project,
   cap,
+  maxFileSizeMb,
   usedThisMonth,
   onNewProject,
 }: {
   project: Project;
   /** This plan's monthly audio-file allowance. */
   cap: Plan["uploadsPerMonth"];
+  /** This plan's per-file size ceiling in MB. Undefined while the plan loads. */
+  maxFileSizeMb?: number;
   /** Files already uploaded across all projects this month, at mount. */
   usedThisMonth: number;
   onNewProject: () => void;
@@ -85,7 +88,11 @@ export function ProjectUploader({
         </Button>
       </div>
 
-      <UploadDropzone onFilesAccepted={handleAccepted} disabled={atCap} />
+      <UploadDropzone
+        onFilesAccepted={handleAccepted}
+        maxFileSizeMb={maxFileSizeMb}
+        disabled={atCap}
+      />
 
       {atCap && (
         <p className="text-muted-foreground text-center text-sm">

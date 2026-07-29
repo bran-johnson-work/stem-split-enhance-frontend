@@ -68,6 +68,7 @@ export default function UploadPage() {
           key={project.id}
           project={project}
           cap={cap}
+          maxFileSizeMb={plan?.maxFileSizeMb}
           usedThisMonth={used}
           onNewProject={() => {
             setProject(null);

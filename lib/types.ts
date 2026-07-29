@@ -80,6 +80,8 @@ export interface Plan {
   features: string[];
   highlighted?: boolean;
   uploadsPerMonth: number | "unlimited";
+  /** Per-file upload ceiling in MB, from the plan (free 20 → studio 500). */
+  maxFileSizeMb: number;
 }
 
 export type BillingCycle = "monthly" | "annual";

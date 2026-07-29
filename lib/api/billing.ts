@@ -105,6 +105,8 @@ function mapPlan(res: PlanResponse): Plan {
     highlighted: res.features?.highlighted ?? undefined,
     // null = unlimited, matching the plan meter's "unlimited" sentinel.
     uploadsPerMonth: res.max_files_per_month === null ? "unlimited" : res.max_files_per_month,
+    // Per-file upload ceiling; the presign policy enforces the same value server-side.
+    maxFileSizeMb: res.max_file_size_mb,
   };
 }
 

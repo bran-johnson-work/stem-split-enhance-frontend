@@ -1,9 +1,3 @@
-// The single source of truth for every query key in the app. Keys are
-// hierarchical so invalidation can be as broad or narrow as needed: invalidating
-// `projects.lists()` refetches every list variant without disturbing any open
-// detail view, while `projects.all` clears the whole feature. Never write a
-// literal key (`["projects"]`) in a component or hook — always go through here,
-// so a key can never drift between where it's written and where it's read.
 
 import type { ProjectsQuery } from "@/lib/query/projects";
 

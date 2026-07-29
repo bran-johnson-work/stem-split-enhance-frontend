@@ -8,17 +8,21 @@ import { cn } from "@/lib/utils";
 import {
   ACCEPT_ATTR,
   ACCEPTED_LABEL,
-  MAX_UPLOAD_BYTES,
   validateAudioFile,
 } from "@/lib/validations/upload";
 
 export function UploadDropzone({
   onFilesAccepted,
+  maxFileSizeMb,
   disabled = false,
 }: {
   onFilesAccepted: (files: File[]) => void;
+  /** Active plan's per-file ceiling in MB. Undefined while the plan loads. */
+  maxFileSizeMb?: number;
   disabled?: boolean;
 }) {
+  const maxBytes =
+    maxFileSizeMb != null ? maxFileSizeMb * 1024 * 1024 : undefined;
   const inputRef = React.useRef<HTMLInputElement>(null);
   const dragDepth = React.useRef(0);
   const [dragActive, setDragActive] = React.useState(false);
@@ -32,7 +36,7 @@ export function UploadDropzone({
       const accepted: File[] = [];
       const rejected: string[] = [];
       for (const file of files) {
-        const result = validateAudioFile(file);
+        const result = validateAudioFile(file, maxBytes);
         if (result.ok) accepted.push(file);
         else rejected.push(`${file.name} — ${result.error}`);
       }
@@ -40,7 +44,7 @@ export function UploadDropzone({
       setRejects(rejected);
       if (accepted.length) onFilesAccepted(accepted);
     },
-    [onFilesAccepted],
+    [onFilesAccepted, maxBytes],
   );
 
   function onDrop(e: React.DragEvent) {
@@ -112,7 +116,8 @@ export function UploadDropzone({
           </span>
         </span>
         <span className="text-muted-foreground text-xs">
-          {ACCEPTED_LABEL} · up to {formatBytes(MAX_UPLOAD_BYTES)} each
+          {ACCEPTED_LABEL}
+          {maxBytes != null ? ` · up to ${formatBytes(maxBytes)} each` : ""}
         </span>
       </button>
 

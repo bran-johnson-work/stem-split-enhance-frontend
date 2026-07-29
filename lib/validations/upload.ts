@@ -1,9 +1,9 @@
 import { formatBytes } from "@/lib/format";
 
-// Kept in lockstep with the backend: the storage bucket enforces a 50 MB cap and
-// only the MIME types in the API's `AudioContentType` enum (see docs/API doc.yaml).
-// Declaring anything else gets rejected with 400 at sign time / 400 at PUT time.
-export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+// Allowed MIME types mirror the API's `AudioContentType` enum (see docs/API doc.yaml);
+// declaring anything else gets rejected with 400 at sign time. The per-file SIZE cap is
+// NOT hardcoded here — it's the caller's plan `max_file_size_mb`, enforced server-side by
+// the S3 presign policy's `content-length-range`. Callers pass it into `validateAudioFile`.
 
 interface AudioFormat {
   label: string;
@@ -74,7 +74,17 @@ export function audioContentType(file: File): string {
 
 export type FileValidation = { ok: true } | { ok: false; error: string };
 
-export function validateAudioFile(file: File): FileValidation {
+/**
+ * Validate a candidate upload against the accepted formats and — when known — the
+ * caller's plan per-file size ceiling. `maxBytes` comes from the active plan's
+ * `maxFileSizeMb`; pass `undefined` while the plan is still loading, in which case
+ * the size check is skipped (fail open) and the backend presign policy is the
+ * authority. Nothing here assumes a fixed cap.
+ */
+export function validateAudioFile(
+  file: File,
+  maxBytes?: number,
+): FileValidation {
   const name = file.name.toLowerCase();
   const extOk = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
   const typeOk = file.type ? ACCEPTED_MIME_TYPES.includes(file.type) : false;
@@ -84,14 +94,14 @@ export function validateAudioFile(file: File): FileValidation {
       error: `Unsupported file type. Upload a ${ACCEPTED_LABEL} file.`,
     };
   }
-  if (file.size > MAX_UPLOAD_BYTES) {
-    return {
-      ok: false,
-      error: `File is too large (${formatBytes(file.size)}). Max size is ${formatBytes(MAX_UPLOAD_BYTES)}.`,
-    };
-  }
   if (file.size === 0) {
     return { ok: false, error: "That file appears to be empty." };
+  }
+  if (maxBytes != null && file.size > maxBytes) {
+    return {
+      ok: false,
+      error: `File is too large (${formatBytes(file.size)}). Your plan allows up to ${formatBytes(maxBytes)}.`,
+    };
   }
   return { ok: true };
 }

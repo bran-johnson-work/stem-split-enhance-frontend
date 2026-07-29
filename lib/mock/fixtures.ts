@@ -70,6 +70,7 @@ export const PLANS: Plan[] = [
     description: "Try KlearNote with a few tracks.",
     features: ["3 uploads", "Standard stems", "MP3 downloads"],
     uploadsPerMonth: 3,
+    maxFileSizeMb: 20,
   },
   {
     id: "creator",
@@ -85,6 +86,7 @@ export const PLANS: Plan[] = [
       "Email support",
     ],
     uploadsPerMonth: 50,
+    maxFileSizeMb: 100,
   },
   {
     id: "pro",
@@ -100,6 +102,7 @@ export const PLANS: Plan[] = [
     ],
     highlighted: true,
     uploadsPerMonth: "unlimited",
+    maxFileSizeMb: 300,
   },
   {
     id: "studio",
@@ -114,6 +117,7 @@ export const PLANS: Plan[] = [
       "Dedicated support",
     ],
     uploadsPerMonth: "unlimited",
+    maxFileSizeMb: 500,
   },
 ];
 
