@@ -1,7 +1,7 @@
 // Real auth calls against Dakota's API, with a mock fallback so the app stays
-// usable when no backend is configured (USE_REAL_BACKEND === false). This is the
-// module that replaces lib/auth/mock-auth.ts for login/register/verify; the
-// forget/reset-password mocks stay there until a backend exists for them.
+// usable when no backend is configured (USE_REAL_BACKEND === false). This module
+// owns every auth flow now — login/register/verify plus forgot/reset-password
+// (the backend added those endpoints; the old password-reset mock is retired).
 //
 // Every function branches on USE_REAL_BACKEND so callers (and the AuthProvider)
 // never need to know which mode they're in.
@@ -163,6 +163,45 @@ export async function confirmEmailVerification(token: string): Promise<void> {
     method: "POST",
     anonymous: true,
     json: { token },
+  });
+}
+
+/**
+ * Request a password-reset email. Always resolves in real mode: the API is
+ * deliberately generic (it never reveals whether the address has an account), so
+ * the only failures worth surfacing are transport/network ones, which `apiFetch`
+ * throws. The actual link is emailed by the backend.
+ */
+export async function forgotPassword(email: string): Promise<void> {
+  if (!USE_REAL_BACKEND) {
+    await delay();
+    return;
+  }
+  await apiFetch<unknown>(apiUrl("/auth/forgot-password"), {
+    method: "POST",
+    anonymous: true,
+    json: { email },
+  });
+}
+
+/**
+ * Set a new password using the `token` from the emailed reset link. Throws an
+ * Error (with `.status`) when the token is invalid, expired, or already used, or
+ * when the password is rejected — so the form can tell the user to request a
+ * fresh link.
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<void> {
+  if (!USE_REAL_BACKEND) {
+    await delay();
+    return;
+  }
+  await apiFetch<unknown>(apiUrl("/auth/reset-password"), {
+    method: "POST",
+    anonymous: true,
+    json: { token, new_password: newPassword },
   });
 }
 

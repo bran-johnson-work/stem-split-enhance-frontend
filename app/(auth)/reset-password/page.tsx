@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AuthHeader } from "@/components/auth/auth-header";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
@@ -11,7 +12,11 @@ export default function ResetPasswordPage() {
         title="Set a new password"
         subtitle="Choose a strong password you don't use elsewhere."
       />
-      <ResetPasswordForm />
+      {/* ResetPasswordForm reads the token via useSearchParams(), which the App
+          Router requires be wrapped in a Suspense boundary. */}
+      <Suspense fallback={null}>
+        <ResetPasswordForm />
+      </Suspense>
     </div>
   );
 }

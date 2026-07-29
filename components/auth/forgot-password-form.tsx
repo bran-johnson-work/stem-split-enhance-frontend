@@ -15,7 +15,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { mockRequestReset } from "@/lib/auth/mock-auth";
+import { forgotPassword } from "@/lib/api/auth";
+import { USE_REAL_BACKEND } from "@/lib/config";
 import { forgotSchema, type ForgotValues } from "@/lib/validations/auth";
 
 export function ForgotPasswordForm() {
@@ -26,8 +27,17 @@ export function ForgotPasswordForm() {
   });
 
   async function onSubmit(values: ForgotValues) {
-    await mockRequestReset(values);
-    setSentTo(values.email);
+    try {
+      await forgotPassword(values.email);
+      setSentTo(values.email);
+    } catch {
+      // The endpoint is deliberately generic (no account enumeration), so the
+      // only real failure here is transport. Surface it on the form rather than
+      // silently claiming an email was sent.
+      form.setError("email", {
+        message: "Couldn't send the reset email. Please try again.",
+      });
+    }
   }
 
   if (sentTo) {
@@ -42,10 +52,14 @@ export function ForgotPasswordForm() {
             We sent a reset link to {sentTo}.
           </p>
         </div>
-        <Button variant="outline" className="w-full" asChild>
-          {/* Demo: jump straight to the reset screen */}
-          <Link href="/reset-password">Open reset link</Link>
-        </Button>
+        {!USE_REAL_BACKEND && (
+          // Demo-only shortcut: with no backend there's no emailed link, so jump
+          // straight to the reset screen. In real mode the link arrives by email
+          // and carries the required `?token=`, so this would land on a dead page.
+          <Button variant="outline" className="w-full" asChild>
+            <Link href="/reset-password">Open reset link</Link>
+          </Button>
+        )}
       </div>
     );
   }

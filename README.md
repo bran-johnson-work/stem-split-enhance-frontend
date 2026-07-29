@@ -59,7 +59,7 @@ day-by-day breakdown.
 | Landing | `/` | ✅ Built |
 | Pricing | `/pricing` | ✅ Built |
 | Login / Signup / Verify email | `/login` `/signup` `/verify-email` | ✅ Built (real auth, env-gated) |
-| Forgot / Reset password | `/forgot-password` `/reset-password` | ✅ Built (mock — no backend endpoint yet) |
+| Forgot / Reset password | `/forgot-password` `/reset-password` | ✅ Built (real auth, env-gated) |
 | Dashboard | `/dashboard` | ✅ Built (stats, recent projects, live progress) |
 | Upload | `/upload` | ✅ Built (drag-drop queue, progress, presigned uploads — env-gated) |
 | Projects (history) | `/projects` | ✅ Built (table/cards, search, status filter, URL-synced pagination) |
@@ -87,9 +87,8 @@ Auth (login, signup, logout, email verification) runs through
 The access token is stored in a JS-readable cookie
 ([`lib/auth/token.ts`](lib/auth/token.ts)) so [`lib/api/fetch.ts`](lib/api/fetch.ts)
 can attach `Authorization: Bearer …` and [`proxy.ts`](proxy.ts) can guard the
-`(app)` routes server-side. Password reset has no backend endpoint yet, so it
-stays mock ([`lib/auth/mock-auth.ts`](lib/auth/mock-auth.ts)). Google sign-in is
-disabled ("Soon") pending an OAuth endpoint.
+`(app)` routes server-side. Google sign-in is disabled ("Soon") pending an OAuth
+endpoint.
 
 ## Visual direction
 
