@@ -156,14 +156,20 @@ export class HttpApi implements KlearNoteApi {
     return billingApi.getSubscription();
   }
 
+  // In-app plan swap: prorated price change on the live Stripe subscription
+  // (POST /billing/change-plan), not the mock — otherwise the cache is seeded
+  // with mock state that a reload immediately contradicts with the real one.
   changePlan(input: ChangePlanInput): Promise<Subscription> {
-    return this.mock.changePlan(input);
+    return billingApi.changePlan(input.planId, input.cycle);
   }
   cancelSubscription(): Promise<Subscription> {
     return billingApi.cancelSubscription();
   }
+  // Undo a scheduled cancellation via the real endpoint (POST /billing/resume);
+  // routing this to the mock left Stripe still set to cancel and made the UI
+  // flip to the mock's free/"Trial" default until the next reload.
   resumeSubscription(): Promise<Subscription> {
-    return this.mock.resumeSubscription();
+    return billingApi.resumeSubscription();
   }
   startCheckout(input: ChangePlanInput): Promise<{ url: string }> {
     const interval = input.cycle;
