@@ -24,6 +24,7 @@ import type {
   Plan,
   Project,
   ProjectStatus,
+  StemComparison,
   Subscription,
   UpdateProfileInput,
   User,
@@ -133,6 +134,17 @@ export class HttpApi implements KlearNoteApi {
 
     const stems = await jobsApi.getJobStems(id, job.id).catch(() => []);
     return stems.length ? { ...merged, stems } : merged;
+  }
+
+  /**
+   * Both engine versions' stems. Returns `null` when there is nothing to compare
+   * — fewer than two versions have produced output — so the caller can hide the
+   * compare UI rather than render a one-sided comparison. A project that predates
+   * the v2 rollout reports exactly one version, which is the normal case.
+   */
+  async getStemsComparison(projectId: string): Promise<StemComparison | null> {
+    const comparison = await jobsApi.getStemsComparison(projectId);
+    return comparison.versions.length >= 2 ? comparison : null;
   }
 
   async createProject(input: CreateProjectInput): Promise<Project> {

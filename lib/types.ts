@@ -31,6 +31,59 @@ export interface Stem {
   durationSec: number;
 }
 
+// --- Engine versions and the v1/v2 comparison ------------------------------
+// The backend runs two separation engines against one queue (`v1` = HT-Demucs,
+// `v2` = Mel-Band RoFormer vocals). While the v2 rollout is staged, a project can
+// hold output from both, and the compare screen plays them against each other.
+
+export type EngineVersion = "v1" | "v2";
+
+/**
+ * How one version's render is doing. A discriminated state rather than a pair of
+ * booleans: v2 takes roughly twice as long as v1, so "still rendering" is a normal
+ * thing to show next to a finished version, not an error.
+ */
+export type VersionState = "completed" | "processing" | "failed";
+
+/** One engine version's output for a project. */
+export interface VersionOutput {
+  version: EngineVersion;
+  jobId: string;
+  state: VersionState;
+  /**
+   * Keyed by the backend's raw stem name (`vocals`, `hihats`, …), which is what
+   * pairs a v1 row with its v2 counterpart. `Stem.id` embeds the job id, so it is
+   * unique per version and useless for matching across them.
+   */
+  stems: Record<string, Stem>;
+  /** What this run actually used, for the "how was this made" disclosure. */
+  config: EngineRunConfig | null;
+}
+
+/**
+ * The subset of `processing_jobs.engine_config` worth showing. The backend records
+ * more; these are the dials that explain an audible difference between two runs.
+ */
+export interface EngineRunConfig {
+  vocalsModel?: string;
+  rhythmModel?: string;
+  enhancementLevel?: string;
+  overlap?: number;
+  shifts?: number;
+}
+
+/** Both versions plus the union of stems either of them produced. */
+export interface StemComparison {
+  /**
+   * Every stem name across both versions, in display order. The union matters:
+   * the versions use different models, so the backend's content gate can keep a
+   * quiet stem in one and drop it from the other. A row missing from one side is
+   * a real answer that has to be shown, not a gap to hide.
+   */
+  stemNames: string[];
+  versions: VersionOutput[];
+}
+
 // One uploaded source file within a project. A project may hold several (a batch
 // upload) — mirrors the backend's `input_files[]`.
 export interface ProjectInputFile {

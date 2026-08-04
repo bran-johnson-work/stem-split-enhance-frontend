@@ -9,6 +9,7 @@
 
 export { useCurrentUser, useUpdateProfile, useChangePassword, useDeleteAccount } from "@/lib/query/users";
 export { useProjects, useProject, type ProjectsQuery } from "@/lib/query/projects";
+export { useStemComparison } from "@/lib/query/comparison";
 export {
   usePlans,
   useSubscription,

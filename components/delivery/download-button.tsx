@@ -13,6 +13,7 @@ export function DownloadButton({
   pending,
   disabled,
   emphasized,
+  qualifier,
   onDownload,
 }: {
   stem: Stem;
@@ -24,15 +25,22 @@ export function DownloadButton({
   disabled: boolean;
   /** The master gets the solid treatment; stems are outlined. */
   emphasized?: boolean;
+  /**
+   * Disambiguates two buttons for the same stem. The comparison screen shows both
+   * versions of one stem side by side, so without this a screen-reader user hears
+   * "Download Vocals" twice with no way to tell which model's take they'd get.
+   */
+  qualifier?: string;
   onDownload: () => void;
 }) {
+  const name = qualifier ? `${stem.name}, ${qualifier}` : stem.name;
   return (
     <Button
       variant={emphasized ? "default" : "outline"}
       size="sm"
       onClick={onDownload}
       disabled={pending || disabled}
-      aria-label={`Download ${stem.name} (${details.join(", ")})`}
+      aria-label={`Download ${name} (${details.join(", ")})`}
     >
       {pending ? (
         <LoaderCircle className="animate-spin" />

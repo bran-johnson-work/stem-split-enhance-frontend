@@ -19,6 +19,9 @@ export const queryKeys = {
       [...queryKeys.projects.lists(), params ?? {}] as const,
     details: () => [...queryKeys.projects.all, "detail"] as const,
     detail: (id: string) => [...queryKeys.projects.details(), id] as const,
+    /** v1-vs-v2 engine output for one project (the compare screen). */
+    stemComparison: (id: string) =>
+      [...queryKeys.projects.all, "stem-comparison", id] as const,
   },
   billing: {
     all: ["billing"] as const,

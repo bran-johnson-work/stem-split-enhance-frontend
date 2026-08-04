@@ -30,6 +30,8 @@ export function WaveformCanvas({
   onInstance,
   onSeek,
   className,
+  peakVariant,
+  label,
 }: {
   stem: Stem;
   height: number;
@@ -39,6 +41,14 @@ export function WaveformCanvas({
   onInstance: (ws: WaveSurfer | null) => void;
   onSeek: (seconds: number) => void;
   className?: string;
+  /** Varies the simulated waveform shape; ignored against a real backend. */
+  peakVariant?: number;
+  /**
+   * Overrides the accessible name. The comparison screen shows two waveforms for
+   * the same stem, so "Seek Vocals" twice would leave a screen-reader user unable
+   * to tell which version they are scrubbing.
+   */
+  label?: string;
 }) {
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -58,6 +68,7 @@ export function WaveformCanvas({
     containerRef,
     height,
     onInstance: handleInstance,
+    peakVariant,
   });
 
   const total = duration || stem.durationSec;
@@ -100,7 +111,7 @@ export function WaveformCanvas({
         ref={containerRef}
         role="slider"
         tabIndex={0}
-        aria-label={`Seek ${stem.name}`}
+        aria-label={label ?? `Seek ${stem.name}`}
         aria-valuemin={0}
         aria-valuemax={Math.round(total)}
         aria-valuenow={Math.round(currentTime)}

@@ -53,8 +53,12 @@ const RESOLUTION = 512;
  * about the centre axis, the way decoded audio does — an all-positive channel
  * would draw only the upper half.
  */
-export function stemPeaks(kind: StemKind): Float32Array {
-  const amps = waveform(RESOLUTION, SEED[kind]);
+export function stemPeaks(kind: StemKind, variant = 0): Float32Array {
+  // `variant` nudges the seed so two renders of the same stem draw different
+  // shapes. The version-comparison screen needs this: with one curve per kind, the
+  // simulated v1 and v2 waveforms would be pixel-identical and the whole screen
+  // would look like it wasn't wired up.
+  const amps = waveform(RESOLUTION, SEED[kind] + variant * 0.45);
   const density = DENSITY[kind];
   const peaks = new Float32Array(RESOLUTION);
   for (let i = 0; i < RESOLUTION; i++) {

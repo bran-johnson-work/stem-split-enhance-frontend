@@ -38,12 +38,19 @@ export const IS_SIMULATED_AUDIO = !USE_REAL_BACKEND;
 /**
  * Resolve a stem to something wavesurfer can load. Takes a reference to the
  * shared silent track on the simulated path — pair every call with `releaseAudioSource`.
+ *
+ * `peakVariant` only matters on the simulated path, where it varies the drawn
+ * shape. Two renders of the same stem — the v1 and v2 takes on the comparison
+ * screen — otherwise draw identical curves and the screen looks unwired.
  */
-export function resolveAudioSource(stem: AudioStem): AudioSource {
+export function resolveAudioSource(
+  stem: AudioStem,
+  peakVariant = 0,
+): AudioSource {
   if (USE_REAL_BACKEND) return { url: stem.url };
   return {
     url: acquireSilentAudio(stem.durationSec),
-    peaks: [stemPeaks(stem.kind)],
+    peaks: [stemPeaks(stem.kind, peakVariant)],
     duration: stem.durationSec,
   };
 }

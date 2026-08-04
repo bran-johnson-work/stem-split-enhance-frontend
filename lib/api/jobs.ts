@@ -2,7 +2,15 @@
 
 import { apiFetch } from "@/lib/api/fetch";
 import { apiUrl } from "@/lib/config";
-import type { Stem, StemKind } from "@/lib/types";
+import type {
+  EngineRunConfig,
+  EngineVersion,
+  Stem,
+  StemComparison,
+  StemKind,
+  VersionOutput,
+  VersionState,
+} from "@/lib/types";
 
 // ---- Backend response shapes ---------------------------------------------
 
@@ -121,4 +129,88 @@ export async function getJobStems(
     apiUrl(`/projects/${projectId}/jobs/${jobId}/stems`),
   );
   return res.stems.map((dl) => mapStem(jobId, dl));
+}
+
+// ---- v1 / v2 comparison ---------------------------------------------------
+
+interface EngineConfigResponse {
+  vocals_model?: string;
+  rhythm_model?: string;
+  enhancement_level?: string;
+  overlap?: number;
+  shifts?: number;
+}
+
+interface VersionStemsResponse {
+  engine_version: string;
+  job_id: string;
+  status: BackendJobStatus;
+  engine_config: EngineConfigResponse | null;
+  stems: StemDownload[];
+}
+
+interface StemsCompareResponse {
+  project_id: string;
+  /** Union of stem names across versions, already in the backend's display order. */
+  stem_names: string[];
+  versions: VersionStemsResponse[];
+}
+
+/** Anything the backend doesn't recognise as a known engine falls back to v1. */
+function mapEngineVersion(value: string): EngineVersion {
+  return value.trim().toLowerCase() === "v2" ? "v2" : "v1";
+}
+
+function mapVersionState(status: BackendJobStatus): VersionState {
+  if (status === "completed") return "completed";
+  if (status === "failed" || status === "cancelled") return "failed";
+  return "processing";
+}
+
+function mapEngineConfig(
+  res: EngineConfigResponse | null,
+): EngineRunConfig | null {
+  if (!res) return null;
+  return {
+    vocalsModel: res.vocals_model,
+    rhythmModel: res.rhythm_model,
+    enhancementLevel: res.enhancement_level,
+    overlap: res.overlap,
+    shifts: res.shifts,
+  };
+}
+
+function mapVersionOutput(res: VersionStemsResponse): VersionOutput {
+  // Keyed by raw `stem_name` while it is still in scope. This is the only place
+  // that name exists — `Stem.id` embeds the job id, so it can't pair v1 with v2.
+  const stems: Record<string, Stem> = {};
+  for (const dl of res.stems) {
+    stems[dl.stem_name.toLowerCase().trim()] = mapStem(res.job_id, dl);
+  }
+  return {
+    version: mapEngineVersion(res.engine_version),
+    jobId: res.job_id,
+    state: mapVersionState(res.status),
+    stems,
+    config: mapEngineConfig(res.engine_config),
+  };
+}
+
+/**
+ * Both engine versions' output for a project, in one request.
+ *
+ * The backend deliberately returns this as a single call rather than a job list
+ * plus N stem lookups, because the compare screen needs every signed URL present
+ * before it can start two transports on the same playhead.
+ */
+export async function getStemsComparison(
+  projectId: string,
+): Promise<StemComparison> {
+  const res = await apiFetch<StemsCompareResponse>(
+    apiUrl(`/projects/${projectId}/stems/compare`),
+  );
+  return {
+    stemNames: res.stem_names.map((name) => name.toLowerCase().trim()),
+    versions: res.versions.map(mapVersionOutput),
+  };
 }

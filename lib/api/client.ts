@@ -27,9 +27,12 @@ import type {
   Plan,
   Project,
   ProjectStatus,
+  Stem,
+  StemComparison,
   Subscription,
   UpdateProfileInput,
   User,
+  VersionOutput,
 } from "@/lib/types";
 
 /**
@@ -50,6 +53,13 @@ export interface KlearNoteApi {
     status?: ProjectStatus[];
   }): Promise<Paginated<Project>>;
   getProject(id: string): Promise<Project>;
+  /**
+   * Both separation engine versions' output for a project, for the side-by-side
+   * compare screen. Resolves to `null` when the project has nothing to compare —
+   * only one version has ever run for it, which is the normal case outside the
+   * staged v2 rollout.
+   */
+  getStemsComparison(projectId: string): Promise<StemComparison | null>;
   createProject(input: CreateProjectInput): Promise<Project>;
   /**
    * Create an empty project (no files yet) to upload audio into. Projects are
@@ -97,6 +107,54 @@ const clone = <T>(v: T): T =>
   typeof structuredClone === "function"
     ? structuredClone(v)
     : JSON.parse(JSON.stringify(v));
+
+/**
+ * A two-version comparison synthesized from a completed mock project, so the
+ * compare screen is exercisable with no backend running.
+ *
+ * The v2 side deliberately omits the last stem when there are three or more. The
+ * real backend's content gate reaches different verdicts per model, so an
+ * asymmetric stem set is a genuine production state — if the mock always returned
+ * matching sets, the "only in one version" branch would never be seen during
+ * development and would ship broken.
+ */
+function mockComparison(project: Project): StemComparison | null {
+  const stems = project.stems.filter((s) => s.kind !== "master");
+  if (stems.length === 0) return null;
+
+  const keyed = (list: Stem[]): Record<string, Stem> =>
+    Object.fromEntries(list.map((s) => [s.kind, clone(s)]));
+
+  const v2Stems = stems.length >= 3 ? stems.slice(0, -1) : stems;
+
+  const versions: VersionOutput[] = [
+    {
+      version: "v1",
+      jobId: `${project.id}-job-v1`,
+      state: "completed",
+      stems: keyed(stems),
+      config: {
+        rhythmModel: "htdemucs_ft",
+        enhancementLevel: "full",
+        shifts: 1,
+      },
+    },
+    {
+      version: "v2",
+      jobId: `${project.id}-job-v2`,
+      state: "completed",
+      stems: keyed(v2Stems),
+      config: {
+        vocalsModel: "mel_band_roformer",
+        rhythmModel: "htdemucs_ft",
+        enhancementLevel: "light",
+        overlap: 2,
+      },
+    },
+  ];
+
+  return { stemNames: stems.map((s) => s.kind), versions };
+}
 
 export class MockApi implements KlearNoteApi {
   async getCurrentUser() {
@@ -164,6 +222,13 @@ export class MockApi implements KlearNoteApi {
     const project = PROJECTS.find((p) => p.id === id);
     if (!project) throw new Error(`Project ${id} not found`);
     return clone(project);
+  }
+
+  async getStemsComparison(projectId: string): Promise<StemComparison | null> {
+    await delay(300);
+    const project = PROJECTS.find((p) => p.id === projectId);
+    if (!project) throw new Error(`Project ${projectId} not found`);
+    return mockComparison(project);
   }
 
   async createProject(input: CreateProjectInput) {

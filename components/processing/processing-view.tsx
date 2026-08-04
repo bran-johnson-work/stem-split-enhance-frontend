@@ -18,6 +18,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { DeliveryPanel } from "@/components/delivery/delivery-panel";
+import { VersionComparePanel } from "@/components/delivery/version-compare-panel";
 import { ProcessingError } from "@/components/processing/processing-error";
 import { ProcessingStepper } from "@/components/processing/processing-stepper";
 import { ProcessingWaveform } from "@/components/processing/processing-waveform";
@@ -92,6 +93,11 @@ export function ProcessingView({ project }: { project: Project }) {
               running={isRunning}
             />
           )}
+
+          {/* Renders itself away unless this project holds output from two engine
+              versions, which only happens during the v2 rollout. Kept below the
+              delivery panel: the files are the payoff, the comparison is a detour. */}
+          {completed && <VersionComparePanel project={project} />}
 
           {completed ? (
             <Card className="py-0">

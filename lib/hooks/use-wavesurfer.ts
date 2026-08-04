@@ -27,6 +27,8 @@ export interface UseWavesurferOptions {
   height: number;
   /** Called with the instance once created, and with `null` on teardown. */
   onInstance?: (ws: WaveSurfer | null) => void;
+  /** Varies the simulated waveform shape; ignored against a real backend. */
+  peakVariant?: number;
 }
 
 export interface UseWavesurferResult {
@@ -41,6 +43,7 @@ export function useWavesurfer({
   containerRef,
   height,
   onInstance,
+  peakVariant = 0,
 }: UseWavesurferOptions): UseWavesurferResult {
   const { resolvedTheme } = useTheme();
   const [ready, setReady] = React.useState(false);
@@ -68,7 +71,7 @@ export function useWavesurfer({
     // Taken here, released in cleanup — symmetric even if the import never
     // resolves or the component unmounts first.
     const audioStem = { kind, url, durationSec };
-    const source = resolveAudioSource(audioStem);
+    const source = resolveAudioSource(audioStem, peakVariant);
 
     void (async () => {
       try {
@@ -111,7 +114,7 @@ export function useWavesurfer({
       wsRef.current = null;
       releaseAudioSource(audioStem);
     };
-  }, [containerRef, height, kind, url, durationSec]);
+  }, [containerRef, height, kind, url, durationSec, peakVariant]);
 
   // Repaint on theme change. Deferred a frame because next-themes swaps the class
   // on <html> and updates `resolvedTheme` in the same tick — reading the tokens
