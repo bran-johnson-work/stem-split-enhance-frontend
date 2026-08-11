@@ -23,6 +23,7 @@ export {
   useStartCheckout,
   useBillingPortal,
 } from "@/lib/query/billing";
+export { useRestorationService, useProjectRestorations } from "@/lib/query/restoration";
 export {
   useAdminUsers,
   useAdminProjects,

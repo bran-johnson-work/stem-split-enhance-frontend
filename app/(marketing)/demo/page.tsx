@@ -62,9 +62,10 @@ export default function DemoPage() {
         </ol>
       </Reveal>
 
-      {/* Always the embedded preview, for everyone. The signed-in pipeline runner
-          lives at /pipeline-demo — deliberately a different URL, so this page
-          shows the same thing to every visitor regardless of session state. */}
+      {/* Always the embedded preview, for everyone. The signed-in demo (the real
+          restoration pipeline) lives at /restoration — deliberately a different
+          URL, so this page shows the same thing to every visitor regardless of
+          session state. */}
       <Reveal delay={120} className="mt-10">
         <DemoEmbed />
       </Reveal>

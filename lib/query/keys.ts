@@ -23,6 +23,14 @@ export const queryKeys = {
     stemComparison: (id: string) =>
       [...queryKeys.projects.all, "stem-comparison", id] as const,
   },
+  restoration: {
+    all: ["restoration"] as const,
+    /** Availability of the external restoration service. */
+    service: () => [...queryKeys.restoration.all, "service"] as const,
+    /** Every restoration run on one project. */
+    list: (projectId: string) =>
+      [...queryKeys.restoration.all, "list", projectId] as const,
+  },
   billing: {
     all: ["billing"] as const,
     plans: () => [...queryKeys.billing.all, "plans"] as const,

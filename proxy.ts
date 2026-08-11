@@ -6,10 +6,10 @@ import { REFRESH_TOKEN_COOKIE, TOKEN_COOKIE } from "@/lib/auth/token";
 const PROTECTED_PREFIXES = [
   "/dashboard",
   "/upload",
-  // The in-app pipeline demo. It creates a real project and consumes real quota,
-  // so it needs a session — unlike the public marketing `/demo`, which embeds the
-  // POC and stays anonymous.
-  "/pipeline-demo",
+  // The in-app demo: the restoration pipeline. It creates a real project, consumes
+  // real quota and occupies a shared GPU queue, so it needs a session — unlike the
+  // public marketing `/demo`, which embeds the POC and stays anonymous.
+  "/restoration",
   "/projects",
   "/settings",
   "/billing",

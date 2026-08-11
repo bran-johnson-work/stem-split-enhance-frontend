@@ -5,9 +5,9 @@ import {
   ListMusic,
   Settings,
   Shield,
-  Sparkles,
   Upload,
   Users,
+  Waves,
   type LucideIcon,
 } from "lucide-react";
 
@@ -31,7 +31,12 @@ export const appNav: NavItem[] = [
   // mirrors — one file through the real presigned-upload path, pinned to engine v3.
   // NOTE: the public `/demo` slug is taken by the marketing page that embeds the
   // Streamlit POC; this is the signed-in, real-backend version.
-  { title: "Demo", href: "/pipeline-demo", icon: Sparkles },
+  // The demo: one track through the V2+V3 restoration pipeline, run on a separate
+  // GPU service. Labelled "Demo" because it is what we show people, but the route
+  // stays /restoration — the public marketing page owns the /demo slug, and two
+  // different pages on one URL depending on a session cookie is impossible to
+  // reason about.
+  { title: "Demo", href: "/restoration", icon: Waves },
   { title: "Billing", href: "/billing", icon: CreditCard },
   { title: "Settings", href: "/settings", icon: Settings },
 ];
