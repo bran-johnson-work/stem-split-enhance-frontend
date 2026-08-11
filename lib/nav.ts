@@ -5,6 +5,7 @@ import {
   ListMusic,
   Settings,
   Shield,
+  Sparkles,
   Upload,
   Users,
   type LucideIcon,
@@ -26,6 +27,11 @@ export const appNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Upload", href: "/upload", icon: Upload },
   { title: "Projects", href: "/projects", icon: FolderClock },
+  // The end-to-end pipeline demo. Sits next to Upload because that is the flow it
+  // mirrors — one file through the real presigned-upload path, pinned to engine v3.
+  // NOTE: the public `/demo` slug is taken by the marketing page that embeds the
+  // Streamlit POC; this is the signed-in, real-backend version.
+  { title: "Demo", href: "/pipeline-demo", icon: Sparkles },
   { title: "Billing", href: "/billing", icon: CreditCard },
   { title: "Settings", href: "/settings", icon: Settings },
 ];

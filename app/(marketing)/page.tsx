@@ -6,6 +6,7 @@ import {
   Download,
   Gauge,
   Layers,
+  PlayCircle,
   ShieldCheck,
   Wand2,
 } from "lucide-react";
@@ -128,6 +129,12 @@ export default function LandingPage() {
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild>
+                  <Link href="/demo">
+                    <PlayCircle className="size-4" />
+                    Try the live demo
+                  </Link>
+                </Button>
+                <Button size="lg" variant="ghost" asChild>
                   <Link href="/pricing">View pricing</Link>
                 </Button>
               </div>

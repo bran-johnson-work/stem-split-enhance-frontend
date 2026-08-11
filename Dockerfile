@@ -1,5 +1,6 @@
 
-#   docker build --build-arg NEXT_PUBLIC_API_URL=https://api.example.com .
+#   docker build --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
+#                --build-arg NEXT_PUBLIC_DEMO_URL=https://demo.example.com .
 ARG NODE_IMAGE=public.ecr.aws/docker/library/node:22-alpine
 
 # --- deps: resolve the full dependency tree once, cached on the lockfile ---
@@ -16,6 +17,11 @@ COPY . .
 
 ARG NEXT_PUBLIC_API_URL="https://api.klearnote.ai"
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# NEXT_PUBLIC_* is inlined at build time, so the /demo embed URL has to be a
+# build arg — setting it in the runtime environment has no effect. An HTTPS
+# origin is required: the page is served over TLS and cannot frame plain HTTP.
+ARG NEXT_PUBLIC_DEMO_URL="https://demo.klearnote.ai"
+ENV NEXT_PUBLIC_DEMO_URL=${NEXT_PUBLIC_DEMO_URL}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

@@ -137,10 +137,22 @@ export function signFileUpload(
   );
 }
 
-/** Finalise the upload: verify the objects landed and move the project to queued. */
-export function completeUpload(projectId: string): Promise<Project> {
+/**
+ * Finalise the upload: verify the objects landed and move the project to queued.
+ *
+ * `engineVersion` pins which engine build renders this project — `v3` for the
+ * separation + restoration chain the demo page exercises. Omit it and the backend
+ * uses its deployment default (and the v1/v2 A-B split). A version the backend has
+ * closed off comes back as a 400 rather than being silently downgraded, so the
+ * caller always knows which engine produced the stems it is showing.
+ */
+export function completeUpload(
+  projectId: string,
+  engineVersion?: string,
+): Promise<Project> {
+  const query = engineVersion ? `?engine_version=${encodeURIComponent(engineVersion)}` : "";
   return apiFetch<ProjectResponse>(
-    apiUrl(`/projects/${projectId}/upload-complete`),
+    apiUrl(`/projects/${projectId}/upload-complete${query}`),
     { method: "POST" },
   ).then(mapProject);
 }

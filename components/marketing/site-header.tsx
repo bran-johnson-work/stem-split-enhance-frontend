@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { Menu, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -76,7 +76,13 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
+          <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex">
+            <Link href="/demo">
+              <PlayCircle className="size-4" />
+              Try demo
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild className="hidden lg:inline-flex">
             <Link href="/login">Log in</Link>
           </Button>
           <Button size="sm" asChild className="hidden sm:inline-flex">
@@ -103,6 +109,12 @@ export function SiteHeader() {
                 ))}
                 <div className="mt-4 flex flex-col gap-2">
                   <Button variant="outline" asChild>
+                    <Link href="/demo">
+                      <PlayCircle className="size-4" />
+                      Try demo
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" asChild>
                     <Link href="/login">Log in</Link>
                   </Button>
                   <Button asChild>
