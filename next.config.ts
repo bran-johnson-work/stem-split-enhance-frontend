@@ -5,13 +5,14 @@ const nextConfig: NextConfig = {
   // Docker runtime stage ships only what's actually imported, not the full deps.
   output: "standalone",
 
-  // Keep `/api/audio-proxy/` from being 308'd to `/api/audio-proxy`. The demo
-  // iframe proxied by `proxy.ts` serves a document whose asset URLs are relative
-  // (`./static/…`), so the trailing slash is load-bearing: without it every
-  // asset resolves against our root instead of the proxy prefix and 404s.
-  // No route in this app depends on the redirect, and links are written without
-  // trailing slashes anyway, so disabling it globally costs nothing.
-  skipTrailingSlashRedirect: true,
+  // `/demo` used to embed the Streamlit POC. The signed-in Demo page runs the same
+  // V2→V3 pipeline through the real API, so the embed was retired — but the old URL
+  // is public and linked from outside, so it redirects rather than 404s. Permanent:
+  // the page is not coming back. Unauthenticated visitors land on
+  // /login?next=/restoration and arrive at the demo once they sign in.
+  async redirects() {
+    return [{ source: "/demo", destination: "/restoration", permanent: true }];
+  },
 };
 
 export default nextConfig;

@@ -27,15 +27,9 @@ export const appNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Upload", href: "/upload", icon: Upload },
   { title: "Projects", href: "/projects", icon: FolderClock },
-  // The end-to-end pipeline demo. Sits next to Upload because that is the flow it
-  // mirrors — one file through the real presigned-upload path, pinned to engine v3.
-  // NOTE: the public `/demo` slug is taken by the marketing page that embeds the
-  // Streamlit POC; this is the signed-in, real-backend version.
-  // The demo: one track through the V2+V3 restoration pipeline, run on a separate
-  // GPU service. Labelled "Demo" because it is what we show people, but the route
-  // stays /restoration — the public marketing page owns the /demo slug, and two
-  // different pages on one URL depending on a session cookie is impossible to
-  // reason about.
+  // The demo: one track through the V2+V3 restoration pipeline, on a separate GPU
+  // service. Labelled "Demo" because it is what we show people; the route keeps the
+  // name /restoration, and the public /demo redirects here.
   { title: "Demo", href: "/restoration", icon: Waves },
   { title: "Billing", href: "/billing", icon: CreditCard },
   { title: "Settings", href: "/settings", icon: Settings },

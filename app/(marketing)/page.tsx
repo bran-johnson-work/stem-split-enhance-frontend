@@ -129,7 +129,7 @@ export default function LandingPage() {
                   </Link>
                 </Button>
                 <Button size="lg" variant="outline" asChild>
-                  <Link href="/demo">
+                  <Link href="/restoration">
                     <PlayCircle className="size-4" />
                     Try the live demo
                   </Link>

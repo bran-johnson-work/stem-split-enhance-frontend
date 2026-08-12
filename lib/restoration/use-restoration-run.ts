@@ -19,9 +19,10 @@
 // that object does not exist until V2 has written it. That ordering is the whole
 // reason the two stages are separate calls rather than one.
 //
-// Note there is no upload-complete call here. That endpoint enqueues the stem
-// *separation* worker, which is a different pipeline; restoration reads the
-// uploaded object directly.
+// Note there is no upload-complete call here. That endpoint also enqueues the stem
+// *separation* worker, which is a different pipeline and would burn GPU nobody asked
+// for. The backend registers the uploaded object itself on the first restoration
+// call — it lists the bucket rather than trusting us, and skips only the enqueue.
 
 import * as React from "react";
 import * as projectsApi from "@/lib/api/projects";

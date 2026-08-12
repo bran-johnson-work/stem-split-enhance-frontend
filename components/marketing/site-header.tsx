@@ -77,7 +77,7 @@ export function SiteHeader() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button variant="outline" size="sm" asChild className="hidden sm:inline-flex">
-            <Link href="/demo">
+            <Link href="/restoration">
               <PlayCircle className="size-4" />
               Try demo
             </Link>
@@ -109,7 +109,7 @@ export function SiteHeader() {
                 ))}
                 <div className="mt-4 flex flex-col gap-2">
                   <Button variant="outline" asChild>
-                    <Link href="/demo">
+                    <Link href="/restoration">
                       <PlayCircle className="size-4" />
                       Try demo
                     </Link>
