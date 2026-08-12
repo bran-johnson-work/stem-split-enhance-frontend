@@ -34,9 +34,13 @@ interface RestorationJobResponseWire {
   stage: RestorationStage;
   status: RestorationStatus;
   parent_id: string | null;
-  /** The pipeline's step log, oldest first. There is no percentage — see below. */
+  /** The pipeline's step log, oldest first. */
   progress: string[];
   current_step: string;
+  /** Backend-derived completion estimate. Monotonic; never 100 until finished. */
+  progress_pct: number;
+  queue_position: number;
+  elapsed_seconds: number;
   is_finished: boolean;
   output: RestorationOutputResponse | null;
   report: Record<string, unknown> | null;
@@ -55,6 +59,9 @@ interface ServiceStatusWire {
   apollo: boolean;
   bucket_configured: boolean;
   queue_depth: number;
+  device: string;
+  precision: string;
+  warm: boolean;
   detail: string | null;
 }
 
@@ -70,6 +77,12 @@ export interface RestorationJob {
   progress: string[];
   /** The most recent step, or "" before the first one arrives. */
   currentStep: string;
+  /** 0-100. An estimate from the step log, not a measurement — it is monotonic and
+   *  caps below 100 until the stage really finishes. */
+  progressPct: number;
+  /** Runs ahead of this one on the single GPU worker. 0 once it is running. */
+  queuePosition: number;
+  elapsedSeconds: number;
   isFinished: boolean;
   isFailed: boolean;
   /** Signed URL for the restored audio. Null until the run finishes. */
@@ -91,6 +104,12 @@ export interface RestorationServiceStatus {
   apollo: boolean;
   bucketConfigured: boolean;
   queueDepth: number;
+  /** What jobs actually run on — not the same claim as `cuda`, which only says a GPU
+   *  is present. A host pinned to the CPU reports cuda:true and still runs on it. */
+  device: string;
+  precision: string;
+  /** False while the host is still downloading checkpoints after a restart. */
+  warm: boolean;
   detail: string | null;
 }
 
@@ -114,6 +133,9 @@ function mapJob(wire: RestorationJobResponseWire): RestorationJob {
     parentId: wire.parent_id,
     progress: wire.progress ?? [],
     currentStep: wire.current_step ?? "",
+    progressPct: wire.progress_pct ?? 0,
+    queuePosition: wire.queue_position ?? 0,
+    elapsedSeconds: wire.elapsed_seconds ?? 0,
     isFinished: wire.is_finished,
     isFailed: wire.status === "failed",
     url: wire.output?.url ?? null,
@@ -139,6 +161,9 @@ export function getServiceStatus(): Promise<RestorationServiceStatus> {
     apollo: w.apollo,
     bucketConfigured: w.bucket_configured,
     queueDepth: w.queue_depth,
+    device: w.device ?? "",
+    precision: w.precision ?? "",
+    warm: w.warm ?? true,
     detail: w.detail,
   }));
 }

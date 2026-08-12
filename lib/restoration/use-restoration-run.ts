@@ -31,9 +31,38 @@ import type { RestorationJob } from "@/lib/api/restoration";
 import { xhrUploadPost } from "@/lib/upload/upload-file";
 import { audioContentType } from "@/lib/validations/upload";
 
-/** Poll cadence. The pipeline emits a step every few seconds at best — a tighter
- *  loop only costs requests, and each one wakes a proxy call to the GPU host. */
-const POLL_MS = 3000;
+/** Poll cadence, widening as a run gets long.
+ *
+ *  Every poll is a proxy call that reaches the GPU host, so a fixed 3s loop spends
+ *  the whole of a ten-minute run asking a busy box the same question 200 times. The
+ *  first minute stays tight because that is when the queued→running transition and
+ *  the first steps land and the user is watching; after that the pipeline emits a
+ *  step every minute or two and there is nothing a 3s loop can see that a 10s one
+ *  cannot. The elapsed timer ticks locally either way, so the UI keeps moving
+ *  between polls. */
+const POLL_STEPS: { afterMs: number; everyMs: number }[] = [
+  { afterMs: 0, everyMs: 2000 },
+  { afterMs: 60_000, everyMs: 5000 },
+  { afterMs: 240_000, everyMs: 10_000 },
+];
+
+function pollDelay(elapsedMs: number): number {
+  let chosen = POLL_STEPS[0].everyMs;
+  for (const step of POLL_STEPS) {
+    if (elapsedMs >= step.afterMs) chosen = step.everyMs;
+  }
+  return chosen;
+}
+
+/** Weight of each stage in the combined bar. V2 is the longer stage on typical
+ *  material, so an even split makes the back half appear to crawl. Matches the
+ *  backend's own `restoration_progress.overall`. */
+const V2_SHARE = 0.55;
+
+/** Rough wall clock for a full V2+V3 run of a ~3 minute track on the T4 host. Shown
+ *  as an expectation, never as a countdown — the bar is driven by real steps, and a
+ *  clock running to zero while work continues is worse than no estimate at all. */
+export const TYPICAL_RUN_SECONDS = 300;
 
 export type RestorationPhase =
   | "idle"
@@ -74,6 +103,8 @@ export interface RestorationRunState {
   v3: RestorationJob | null;
   /** The step the active stage last reported. */
   step: string;
+  /** Seconds since the run started, ticking locally between polls. */
+  elapsedSeconds: number;
   error: string | null;
 }
 
@@ -86,8 +117,34 @@ const INITIAL: RestorationRunState = {
   v2: null,
   v3: null,
   step: "",
+  elapsedSeconds: 0,
   error: null,
 };
+
+/** The whole run as one 0-100 number.
+ *
+ *  Upload is real progress and is counted, but only for the sliver of wall clock it
+ *  actually occupies — a bar that reaches 15% on upload and then sits still for four
+ *  minutes of GPU work is a worse lie than one that starts slow.
+ */
+export function overallPercent(state: RestorationRunState, ranRepair: boolean): number {
+  if (state.phase === "done") return 100;
+  if (state.phase === "idle" || state.phase === "creating") return 0;
+  if (state.phase === "uploading") return Math.round(state.uploadPct * 0.05);
+
+  const v2 = state.v2?.progressPct ?? 0;
+  const v3 = state.v3?.progressPct ?? 0;
+  const pipeline = ranRepair ? v2 * V2_SHARE + v3 * (1 - V2_SHARE) : v3;
+  // The 5% the upload owns is already banked by the time any stage runs.
+  return Math.min(99, Math.round(5 + pipeline * 0.95));
+}
+
+/** Whichever stage is currently running, for the queue-position readout. */
+export function activeJob(state: RestorationRunState) {
+  if (state.phase === "restoring") return state.v3;
+  if (state.phase === "repairing") return state.v2;
+  return null;
+}
 
 export function useRestorationRun() {
   const [state, setState] = React.useState<RestorationRunState>(INITIAL);
@@ -110,6 +167,33 @@ export function useRestorationRun() {
   const patch = React.useCallback((next: Partial<RestorationRunState>) => {
     if (alive.current) setState((prev) => ({ ...prev, ...next }));
   }, []);
+
+  // A local clock, so the UI keeps moving between polls. Without it the page is
+  // visibly frozen for whole poll intervals, which on a long run is the difference
+  // between "working" and "hung" — and the poll interval widens as the run goes on
+  // precisely so we are asking the GPU host less often, not more.
+  const startedAt = React.useRef<number | null>(null);
+  const running =
+    state.phase === "creating" ||
+    state.phase === "uploading" ||
+    state.phase === "repairing" ||
+    state.phase === "restoring";
+
+  React.useEffect(() => {
+    if (!running) {
+      startedAt.current = null;
+      return;
+    }
+    startedAt.current ??= Date.now();
+    const id = setInterval(() => {
+      if (!alive.current || startedAt.current === null) return;
+      setState((prev) => ({
+        ...prev,
+        elapsedSeconds: Math.floor((Date.now() - startedAt.current!) / 1000),
+      }));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [running]);
 
   const reset = React.useCallback(() => {
     abort.current?.abort();
@@ -137,6 +221,7 @@ export function useRestorationRun() {
       jobId: string,
       onUpdate: (job: RestorationJob) => void,
     ): Promise<RestorationJob | null> => {
+      const startedAt = Date.now();
       while (alive.current) {
         let job: RestorationJob;
         try {
@@ -145,7 +230,7 @@ export function useRestorationRun() {
           // The backend answers a poll from its own stored row even when the GPU
           // host is briefly unreachable, so a throw here is transport-level and
           // transient. Backing off is right; failing the run is not.
-          await sleep(POLL_MS * 2);
+          await sleep(pollDelay(Date.now() - startedAt) * 2);
           continue;
         }
         if (!alive.current) return null;
@@ -158,7 +243,7 @@ export function useRestorationRun() {
           );
         }
         if (job.isFinished) return job;
-        await sleep(POLL_MS);
+        await sleep(pollDelay(Date.now() - startedAt));
       }
       return null;
     },

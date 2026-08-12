@@ -21,6 +21,7 @@ import {
   Waves,
 } from "lucide-react";
 import { AuditionPanel } from "@/components/restoration/audition-panel";
+import { ResultCompare } from "@/components/restoration/result-compare";
 import {
   QualityCard,
   V2ReportCard,
@@ -42,11 +43,14 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { USE_REAL_BACKEND } from "@/lib/config";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, formatDuration } from "@/lib/format";
 import { findPlan } from "@/lib/billing/plans";
 import { usePlans, useRestorationService, useSubscription } from "@/lib/hooks/queries";
 import {
+  activeJob,
   DEFAULT_OPTIONS,
+  overallPercent,
+  TYPICAL_RUN_SECONDS,
   useRestorationRun,
   type RestorationOptions,
   type RestorationPhase,
@@ -142,6 +146,16 @@ export function RestorationRunner() {
     bandwidth: options.bandwidth && !apolloMissing,
   };
 
+  const percent = overallPercent(state, effective.runRepair);
+  const queuedBehind = activeJob(state)?.queuePosition ?? 0;
+  // A host whose torch is a CPU-only wheel reports cuda:true from the driver and
+  // still runs every model on the CPU. That is a ten-fold difference in wall clock
+  // and the only place it is visible is here, so it is said before a run rather
+  // than discovered during one.
+  const cpuBound = Boolean(
+    service?.reachable && service.device && !service.device.startsWith("cuda"),
+  );
+
   const startOver =
     state.phase !== "idle" ? (
       <Button variant="outline" size="sm" onClick={reset}>
@@ -186,12 +200,25 @@ export function RestorationRunner() {
         </Alert>
       )}
 
-      {service?.reachable && !service.cuda && (
+      {service?.reachable && (!service.cuda || cpuBound) && (
         <Alert>
           <CircleAlert />
           <AlertDescription>
-            The restoration host has no GPU available, so this will run on CPU and
-            take considerably longer.
+            {service.cuda
+              ? "The restoration host has a GPU but is configured to run on CPU, so this will take considerably longer."
+              : "The restoration host has no GPU available, so this will run on CPU and take considerably longer."}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* A cold host spends minutes downloading checkpoints before the first step
+          appears. Saying so is the difference between a slow start and a broken one. */}
+      {service?.reachable && !service.warm && (
+        <Alert>
+          <CircleAlert />
+          <AlertDescription>
+            The restoration host is still loading its models after a restart. The
+            first run will take a few minutes longer than usual.
           </AlertDescription>
         </Alert>
       )}
@@ -283,6 +310,39 @@ export function RestorationRunner() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* One bar for the whole run, above the per-stage list.
+                  The pipeline reports named steps rather than a percentage, and the
+                  bar is the backend's estimate from those steps — monotonic, and it
+                  stops short of 100 until the run really finishes. It is here
+                  because the alternative, a single line of text that changes every
+                  minute or two across a multi-minute GPU run, is indistinguishable
+                  from a hang: people reload, start again, and queue a second job
+                  behind their own on a host that runs one at a time. */}
+              {state.phase !== "error" && (
+                <div className="space-y-1.5">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-medium">
+                      {state.phase === "done" ? "Finished" : "Working"}
+                    </span>
+                    <span className="text-muted-foreground text-xs tabular-nums">
+                      {percent}% · {formatDuration(state.elapsedSeconds)}
+                      {state.phase !== "done" &&
+                        state.elapsedSeconds < TYPICAL_RUN_SECONDS &&
+                        ` of ~${formatDuration(TYPICAL_RUN_SECONDS)}`}
+                    </span>
+                  </div>
+                  <Progress value={percent} className="h-2" />
+                  <p className="text-muted-foreground text-xs">
+                    {queuedBehind > 0
+                      ? `Waiting for the GPU — ${queuedBehind} ${queuedBehind === 1 ? "run is" : "runs are"} ahead of yours. It processes one at a time.`
+                      : state.phase === "done"
+                        ? "Both stages complete."
+                        : // `step` is "" before the first label arrives, not null.
+                          state.step || "Queued"}
+                  </p>
+                </div>
+              )}
+
               {STAGES.map((stage) => {
                 const skipped = stage.key === "repairing" && !effective.runRepair;
                 const status = stageState(stage.key, state.phase, skipped);
@@ -368,6 +428,19 @@ export function RestorationRunner() {
                   caption: "restored",
                   placeholder: "Runs after Version 2 finishes.",
                 },
+              ]}
+            />
+          )}
+
+          {/* Only once the run is complete. Analysing V2 the moment it lands would
+              pull three files' worth of bandwidth and main-thread time while the
+              user is still waiting on the V3 job that follows it. */}
+          {state.phase === "done" && (
+            <ResultCompare
+              sources={[
+                { key: "original", label: "Original", file: state.file },
+                { key: "v2", label: "Version 2", url: state.v2?.url },
+                { key: "v3", label: "Version 3", url: state.v3?.url },
               ]}
             />
           )}
