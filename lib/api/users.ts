@@ -5,7 +5,7 @@
 
 import { login, mapUser, type UserResponse } from "@/lib/api/auth";
 import { apiFetch } from "@/lib/api/fetch";
-import { setToken } from "@/lib/auth/token";
+import { setRefreshToken, setToken } from "@/lib/auth/token";
 import { apiUrl } from "@/lib/config";
 import type { ChangePasswordInput, User } from "@/lib/types";
 
@@ -30,6 +30,37 @@ export async function updateUser(
 /** Delete an account. Cascades to the user's projects and storage server-side. */
 export async function deleteUser(id: string): Promise<void> {
   await apiFetch<void>(apiUrl(`/users/${id}`), { method: "DELETE" });
+}
+
+/** A presigned POST for uploading a new avatar image directly to S3. */
+interface AvatarUploadUrlResponse {
+  storage_key: string;
+  url: string;
+  fields: Record<string, string>;
+}
+
+/** Request a presigned POST to upload a new avatar of the given content type. */
+export function requestAvatarUploadUrl(
+  contentType: string,
+): Promise<AvatarUploadUrlResponse> {
+  return apiFetch<AvatarUploadUrlResponse>(
+    apiUrl("/users/me/avatar/upload-url"),
+    { method: "POST", json: { content_type: contentType } },
+  );
+}
+
+/** Finalise the avatar upload; returns the updated user (with the signed URL). */
+export function completeAvatarUpload(): Promise<User> {
+  return apiFetch<UserResponse>(apiUrl("/users/me/avatar/complete"), {
+    method: "POST",
+  }).then(mapUser);
+}
+
+/** Remove the current user's avatar; returns the updated user. */
+export function deleteAvatar(): Promise<User> {
+  return apiFetch<UserResponse>(apiUrl("/users/me/avatar"), {
+    method: "DELETE",
+  }).then(mapUser);
 }
 
 /**
@@ -68,10 +99,13 @@ export async function changePassword(
 
   await updateUser(user.id, { password: newPassword });
 
-  const token = await login({
+  const session = await login({
     email: user.email,
     password: newPassword,
     remember: false,
   });
-  setToken(token);
+  setToken(session.accessToken);
+  // The re-login issued a fresh refresh token; keeping the old one would leave
+  // the session unable to renew once this access token expires.
+  if (session.refreshToken) setRefreshToken(session.refreshToken);
 }

@@ -35,10 +35,11 @@ export const simulatedDownloader: Downloader = () =>
  * download manager in charge (no blob buffering, works for large stems).
  *
  * Caveat for the backend integration: `download` is only honoured for same-origin
- * URLs. A cross-origin signed URL (e.g. Supabase Storage) ignores the attribute
- * and the browser falls back to navigating/inlining, using the object's own name.
- * Supabase honours a `?download=<filename>` query param for exactly this; wire it
- * where the URL is signed, not here.
+ * URLs. A cross-origin signed URL ignores the attribute and the browser uses the
+ * object's own name. This is fine for the two cross-origin sources in play: S3
+ * stem URLs can be signed with a `response-content-disposition`, and Stripe's
+ * `invoice_pdf` already serves `Content-Disposition: attachment`, so both
+ * download rather than navigate.
  */
 export const anchorDownload: Downloader = async ({ url, filename }) => {
   const a = document.createElement("a");

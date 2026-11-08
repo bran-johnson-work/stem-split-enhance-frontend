@@ -1,14 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { TOKEN_COOKIE } from "@/lib/auth/token";
-
-// Server-side route guard (Next 16 "proxy" convention — the successor to
-// middleware). Reads the (JS-readable) auth cookie and:
-//   • bounces unauthenticated visitors off the (app) routes to /login, and
-//   • bounces already-authenticated visitors off /login and /signup to /dashboard.
-// Password-reset and email-verification pages stay reachable in either state.
-//
-// This is presence-only (does the cookie exist). Token validity/expiry is
-// enforced by the backend, which returns 401 and prompts a fresh login.
+import { isTokenExpired } from "@/lib/auth/jwt";
+import { REFRESH_TOKEN_COOKIE, TOKEN_COOKIE } from "@/lib/auth/token";
 
 /** Path prefixes that require a session. */
 const PROTECTED_PREFIXES = [
@@ -25,20 +17,38 @@ const AUTH_ONLY_PATHS = ["/login", "/signup"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasToken = Boolean(request.cookies.get(TOKEN_COOKIE)?.value);
+  const token = request.cookies.get(TOKEN_COOKIE)?.value;
+  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+
+  // An expired *access* token is not the end of a session — the client trades
+  // the refresh token for a new one on the first 401. So a session exists when
+  // the access token is live, OR a refresh token is present to revive it. This
+  // is also what carries a login across a browser restart: the access cookie is
+  // session-scoped and gone, the refresh cookie persists.
+  //
+  // Only when neither holds is the session really over, and only then is the
+  // signed-in shell worth avoiding (it would render and 401 on every request).
+  const accessLive = Boolean(token) && !isTokenExpired(token!);
+  const hasSession = accessLive || Boolean(refreshToken);
+  const expired = !hasSession && Boolean(token);
 
   const isProtected = PROTECTED_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 
-  if (isProtected && !hasToken) {
+  if (isProtected && !hasSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    if (expired) url.searchParams.set("expired", "1");
+
+    const response = NextResponse.redirect(url);
+    // Drop the dead cookie on the way out, so a reload doesn't repeat the trip.
+    if (expired) response.cookies.delete(TOKEN_COOKIE);
+    return response;
   }
 
-  if (hasToken && AUTH_ONLY_PATHS.includes(pathname)) {
+  if (hasSession && AUTH_ONLY_PATHS.includes(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";

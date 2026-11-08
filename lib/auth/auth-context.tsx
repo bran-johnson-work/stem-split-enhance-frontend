@@ -8,7 +8,7 @@
 // react to auth state.
 
 import * as React from "react";
-import { getToken, subscribeToken } from "@/lib/auth/token";
+import { hasSession, subscribeToken } from "@/lib/auth/token";
 import { USE_REAL_BACKEND } from "@/lib/config";
 import { useLogin, useLogout, useRegister } from "@/lib/query/auth";
 import type { LoginValues, SignupValues } from "@/lib/validations/auth";
@@ -37,15 +37,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerMutation = useRegister();
   const logoutMutation = useLogout();
 
-  // The token cookie is external state — read it through useSyncExternalStore so
-  // login/logout (which call setToken/clearToken → notify) re-render subscribers,
-  // and the server snapshot is null (no cookie) to avoid a hydration mismatch.
-  const token = React.useSyncExternalStore(
+  // The token cookies are external state — read them through useSyncExternalStore
+  // so login/logout (which call setToken/clearToken → notify) re-render
+  // subscribers, and the server snapshot is false (no cookie) to avoid a
+  // hydration mismatch.
+  const isAuthenticated = React.useSyncExternalStore(
     subscribeToken,
-    getToken,
-    () => null,
+    hasSession,
+    () => false,
   );
-  const isAuthenticated = Boolean(token);
 
   // `mutateAsync` (not `mutate`) because callers await these and surface the
   // rejection in their own form error state.

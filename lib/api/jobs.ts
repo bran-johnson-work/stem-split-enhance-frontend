@@ -1,11 +1,4 @@
-// Real processing-job calls against Dakota's API. This is where a project's
-// *live* progress and its finished stems actually come from: `ProjectResponse`
-// carries only a coarse status (`processing` / `completed`), while the job row
-// carries `progress` (0..100) and a human `current_step`, and the stems endpoint
-// mints short-lived signed download URLs.
-//
-// Real-only, like lib/api/projects — the mock equivalents live in MockApi, and
-// lib/api/index picks between the two. Callers go through the KlearNoteApi seam.
+
 
 import { apiFetch } from "@/lib/api/fetch";
 import { apiUrl } from "@/lib/config";
@@ -79,13 +72,7 @@ function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, value));
 }
 
-/**
- * Fold the worker's stem names onto the five kinds the delivery UI renders.
- * The engine emits more stems than the UI has lanes for (it splits drums into
- * kick/snare/hi-hats, and can emit instrument sub-stems), so anything
- * unrecognised lands in `other` rather than being dropped — a user should never
- * lose a file just because the UI has no dedicated colour for it.
- */
+
 const STEM_KINDS: Record<string, StemKind> = {
   vocals: "vocals",
   drums: "drums",
@@ -111,21 +98,11 @@ function mapStem(jobId: string, dl: StemDownload): Stem {
     name: stemLabel(dl.stem_name),
     kind: mapStemKind(dl.stem_name),
     url: dl.url,
-    // Neither size nor duration is exposed on the download DTO; the delivery
-    // rows already render a missing value as "—" (see lib/delivery/deliverables).
     sizeBytes: 0,
     durationSec: 0,
   };
 }
 
-// ---- API calls ------------------------------------------------------------
-
-/**
- * The project's most recent job, or `null` when none has been created yet
- * (a project sits job-less between `upload-complete` and the worker picking it
- * up). The API returns jobs newest-first; a project is re-processable, so only
- * the newest one describes the current state.
- */
 export async function getLatestJob(
   projectId: string,
 ): Promise<JobProgress | null> {

@@ -118,11 +118,15 @@ export const CURRENT_USER: User = {
   email: "amart@klearnote.ai",
   role: "admin",
   createdAt: iso(120 * DAY),
+  // A brand-new account starts on the free plan with no card and nothing to
+  // renew. This is also the subscription `mapUser` (lib/api/auth) stamps onto a
+  // real backend user, so a just-registered user lands here — not on a paid
+  // plan. Upgrading (plan picker) mutates this in place; see MockApi.changePlan.
   subscription: {
-    planId: "pro",
+    planId: "free",
     status: "active",
     cycle: "monthly",
-    renewsAt: iso(-18 * DAY), // 18 days from now
+    renewsAt: iso(-30 * DAY), // unused on the free plan (nothing renews)
   },
 };
 
@@ -267,17 +271,10 @@ export const PROJECTS: Project[] = [
   },
 ];
 
-// Six months of history on the fixture user's plan (Pro, monthly). MockApi
-// prepends to this list when a plan change bills immediately, so the table isn't
-// static once you use the screen.
-export const INVOICES: Invoice[] = Array.from({ length: 6 }, (_, i) => ({
-  id: `in_${9006 - i}`,
-  date: iso((12 + i * 30) * DAY),
-  amount: 79,
-  status: "paid" as const,
-  description: "Pro — monthly",
-  url: "#",
-}));
+// A new free-plan account has no billing history. MockApi prepends to this list
+// when an upgrade bills immediately, so receipts appear once the user actually
+// subscribes to a paid plan.
+export const INVOICES: Invoice[] = [];
 
 /**
  * Billing state MockApi mutates in place (a card can be added, replaced and
@@ -285,13 +282,9 @@ export const INVOICES: Invoice[] = Array.from({ length: 6 }, (_, i) => ({
  * across module boundaries. Resets on a full page reload, like PROJECTS.
  */
 export const BILLING_STATE: { paymentMethod: PaymentMethod | null } = {
-  paymentMethod: {
-    id: "pm_4242",
-    brand: "visa",
-    last4: "4242",
-    expMonth: 8,
-    expYear: 2028,
-  },
+  // No card on file by default — a free-plan account hasn't entered one. A card
+  // is attached only when the user adds one (plan picker / payment method card).
+  paymentMethod: null,
 };
 
 export const ADMIN_USERS: AdminUserRow[] = [
