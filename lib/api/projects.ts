@@ -1,6 +1,7 @@
 // Real project + file-upload calls against Dakota's API, plus the
-// ProjectResponse → Project mapper shared with the (Phase 3) HttpApi. These back
-// the presigned upload flow: create-project → sign-per-file → PUT → upload-complete.
+// ProjectResponse → Project mapper shared with the HttpApi. These back the
+// presigned upload flow: create-project → sign-per-file → POST to S3 →
+// upload-complete.
 
 import { apiFetch } from "@/lib/api/fetch";
 import { apiUrl } from "@/lib/config";
@@ -35,11 +36,16 @@ export interface ProjectResponse {
   updated_at: string;
 }
 
+/**
+ * A presigned POST. The client sends `multipart/form-data` to `url` with every
+ * `fields` entry appended *before* the `file` part; S3 enforces the policy's
+ * size and content-type conditions itself and rejects violating uploads.
+ */
 export interface UploadUrlResponse {
   project_id: string;
   storage_key: string;
   url: string;
-  token: string;
+  fields: Record<string, string>;
 }
 
 // ---- Mapping --------------------------------------------------------------
@@ -95,24 +101,6 @@ export function mapProject(res: ProjectResponse): Project {
   };
 }
 
-// ---- Storage URL resolution ----------------------------------------------
-
-/**
- * The signed upload `url` may be relative (e.g. `/object/upload/sign/...`). When
- * it is, prefix it with `<SUPABASE_URL>/storage/v1` to make it absolute, per the
- * API doc. Absolute URLs are returned unchanged.
- */
-export function resolveStorageUrl(url: string): string {
-  if (/^https?:\/\//i.test(url)) return url;
-  const base = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/+$/, "");
-  if (!base) {
-    throw new Error(
-      "NEXT_PUBLIC_SUPABASE_URL is required to resolve the storage upload URL.",
-    );
-  }
-  return `${base}/storage/v1${url.startsWith("/") ? url : `/${url}`}`;
-}
-
 // ---- API calls ------------------------------------------------------------
 
 /** Create an empty project (consumes monthly quota). */
@@ -123,15 +111,29 @@ export function createProject(name?: string): Promise<ProjectResponse> {
   });
 }
 
-/** Mint a presigned upload URL for a file in an existing project. */
+/**
+ * Mint a presigned POST for a file in an existing project.
+ *
+ * `fileSizeBytes` is advisory: it lets the backend fail a too-large file with a
+ * 413 *before* the bytes go over the wire. It is not trusted — the policy caps
+ * the real transfer and `upload-complete` re-checks the stored object.
+ */
 export function signFileUpload(
   projectId: string,
   filename: string,
   contentType: string,
+  fileSizeBytes?: number,
 ): Promise<UploadUrlResponse> {
   return apiFetch<UploadUrlResponse>(
     apiUrl(`/projects/${projectId}/files/upload-url`),
-    { method: "POST", json: { filename, content_type: contentType } },
+    {
+      method: "POST",
+      json: {
+        filename,
+        content_type: contentType,
+        ...(fileSizeBytes ? { file_size_bytes: fileSizeBytes } : {}),
+      },
+    },
   );
 }
 

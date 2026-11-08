@@ -22,13 +22,3 @@ export const API_V1 = "/api/v1";
 export function apiUrl(path: string): string {
   return `${API_URL}${API_V1}${path.startsWith("/") ? path : `/${path}`}`;
 }
-
-/**
- * Emails granted the admin role in the UI. The backend's user model has no
- * role field, so admin is assigned client-side from this allowlist until a
- * real roles endpoint exists.
- */
-export const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);

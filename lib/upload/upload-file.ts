@@ -1,6 +1,6 @@
 // Uploader seam. The queue (lib/hooks/use-upload-queue.ts) is written against the
 // `Uploader` contract and never knows *how* a file is transferred — a simulated
-// transfer (no backend) or a real presigned PUT to Supabase Storage. The
+// transfer (no backend) or a real presigned POST direct to S3. The
 // project-aware presigned uploader is assembled in lib/upload/upload-batch.ts;
 // this module holds the transport primitives it (and the simulator) build on.
 
@@ -73,23 +73,37 @@ export const simulatedUploader: Uploader = (file, { onProgress, signal }) =>
   });
 
 /**
- * Real, transport-level PUT with progress — the reusable building block for the
- * presigned Supabase path (`XMLHttpRequest`, not `fetch`, because only XHR
- * exposes upload-progress events). `contentType` must match the value declared
- * when the upload URL was signed; no `Authorization` header is sent (the signed
- * URL carries its own single-use token).
+ * Real, transport-level upload with progress — the building block for the S3
+ * presigned-POST path.
+ *
+ * Two constraints shape this function:
+ *   • `XMLHttpRequest`, not `fetch`, because only XHR exposes upload-progress
+ *     events (`fetch` has no equivalent until request streams ship broadly).
+ *   • The body is `multipart/form-data` with **every signed `fields` entry
+ *     appended before the `file` part** — S3 parses the policy positionally and
+ *     rejects the POST if `file` comes first. No `content-type` header is set
+ *     by hand: the browser must add its own multipart boundary, and no
+ *     `Authorization` header is sent (the policy is the credential).
+ *
+ * S3 answers a successful presigned POST with **204 No Content** (or 201 when
+ * the policy asked for it), so any 2xx counts as success.
  */
-export function xhrUpload(
+export function xhrUploadPost(
   url: string,
+  fields: Record<string, string>,
+  storageKey: string,
   file: File,
   { onProgress, signal }: UploadHandlers,
-  contentType?: string,
 ): Promise<UploadResult> {
   return new Promise<UploadResult>((resolve, reject) => {
     if (signal.aborted) return reject(abortError());
 
+    const form = new FormData();
+    for (const [name, value] of Object.entries(fields)) form.append(name, value);
+    form.append("file", file); // must be last — S3 ignores anything after it
+
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
+    xhr.open("POST", url);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     };
@@ -97,9 +111,9 @@ export function xhrUpload(
       signal.removeEventListener("abort", onAbort);
       if (xhr.status >= 200 && xhr.status < 300) {
         onProgress(100);
-        resolve({ storagePath: url });
+        resolve({ storagePath: storageKey });
       } else {
-        reject(new Error(`Upload failed (${xhr.status})`));
+        reject(new Error(s3ErrorMessage(xhr)));
       }
     };
     xhr.onerror = () => {
@@ -112,10 +126,27 @@ export function xhrUpload(
     };
     signal.addEventListener("abort", onAbort);
 
-    xhr.setRequestHeader(
-      "content-type",
-      contentType || file.type || "application/octet-stream",
-    );
-    xhr.send(file);
+    xhr.send(form);
   });
+}
+
+/**
+ * S3 rejects a policy violation with an XML `<Error><Message>…` body rather than
+ * JSON, so the useful part has to be dug out by hand. The common case is a file
+ * bigger than the plan's limit tripping the policy's `content-length-range`,
+ * which we translate into copy a user can act on.
+ */
+function s3ErrorMessage(xhr: XMLHttpRequest): string {
+  const body = typeof xhr.responseText === "string" ? xhr.responseText : "";
+  const code = /<Code>([^<]+)<\/Code>/.exec(body)?.[1];
+
+  if (code === "EntityTooLarge") {
+    return "That file is larger than your plan allows.";
+  }
+  if (code === "AccessDenied" || xhr.status === 403) {
+    // Presigned policies are short-lived; an expired one lands here.
+    return "The upload link expired. Please try the upload again.";
+  }
+  const message = /<Message>([^<]+)<\/Message>/.exec(body)?.[1];
+  return message ?? `Upload failed (${xhr.status})`;
 }
